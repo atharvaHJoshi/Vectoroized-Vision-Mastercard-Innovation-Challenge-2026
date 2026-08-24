@@ -1,0 +1,818 @@
+{
+  "baseline_attacks": {
+    "threshold": 0.0522710885665832,
+    "n": 6208,
+    "n_positive": 78,
+    "n_negative": 6130,
+    "tp": 46,
+    "fp": 61,
+    "tn": 6069,
+    "fn": 32,
+    "precision": 0.42990654205607476,
+    "recall": 0.5897435897435898,
+    "f1": 0.4972972972972974,
+    "f2": 0.5489260143198091,
+    "specificity": 0.9900489396411093,
+    "fpr": 0.009951060358890701,
+    "fnr": 0.41025641025641024,
+    "accuracy": 0.9850193298969072,
+    "balanced_accuracy": 0.7898962646923495,
+    "roc_auc": 0.9582632701719161,
+    "pr_auc": 0.6059060332881673,
+    "detection_rate": 0.5897435897435898,
+    "alert_rate": 0.017235824742268042,
+    "alerts_per_1k_legit": 9.951060358890702,
+    "value_detected_share": 0.8395515088070148,
+    "latency_us_per_txn": null
+  },
+  "adversarial_attacks": {
+    "threshold": 0.05081646828088736,
+    "n": 8641,
+    "n_positive": 3026,
+    "n_negative": 5615,
+    "tp": 775,
+    "fp": 56,
+    "tn": 5559,
+    "fn": 2251,
+    "precision": 0.9326113116726835,
+    "recall": 0.25611368142762725,
+    "f1": 0.40186673580502985,
+    "f2": 0.2995747970622343,
+    "specificity": 0.990026714158504,
+    "fpr": 0.009973285841495993,
+    "fnr": 0.7438863185723728,
+    "accuracy": 0.7330170119199166,
+    "balanced_accuracy": 0.6230701977930656,
+    "roc_auc": 0.8962002214114657,
+    "pr_auc": 0.8281624675197172,
+    "detection_rate": 0.25611368142762725,
+    "alert_rate": 0.09616942483508853,
+    "alerts_per_1k_legit": 9.973285841495994,
+    "value_detected_share": 0.3426510795006106,
+    "latency_us_per_txn": null
+  },
+  "recall_drop": 0.3336,
+  "adaptation_plan": {
+    "base_difficulty": "HARD",
+    "intensity": 0.85,
+    "moves": [
+      {
+        "cause_key": "LOW_VALUE",
+        "cause_label": "Low-value amounts",
+        "knob": "amount_mult",
+        "lift": 10.781,
+        "share_of_missed": 0.4688,
+        "attribution": 0.2259,
+        "intensity_applied": 1.0,
+        "rationale": "Detector misses attacks whose amounts sit inside the victim's normal range, so compress the drain toward that range and take the value in more, smaller pieces."
+      },
+      {
+        "cause_key": "MERCHANT_MIMICRY",
+        "cause_label": "Merchant mimicry",
+        "knob": "merchant_reuse",
+        "lift": 1.848,
+        "share_of_missed": 0.8438,
+        "attribution": 0.206,
+        "intensity_applied": 1.0,
+        "rationale": "Acceptance-side novelty is being caught, so cash out through merchants the victim already transacts with."
+      },
+      {
+        "cause_key": "FAMILIAR_GEOGRAPHY",
+        "cause_label": "Familiar geography",
+        "knob": "p_new_city",
+        "lift": 1.314,
+        "share_of_missed": 1.0,
+        "attribution": 0.1279,
+        "intensity_applied": 0.808,
+        "rationale": "Geo-anomaly checks are load-bearing, so stay in the victim's home city and off hosting/VPN infrastructure."
+      },
+      {
+        "cause_key": "SEQUENCE_ONLY",
+        "cause_label": "Visible only as a sequence",
+        "knob": "spread_days",
+        "lift": 10.062,
+        "share_of_missed": 0.2188,
+        "attribution": 0.1047,
+        "intensity_applied": 1.0,
+        "rationale": "Per-row scoring cannot see ordering, so decompose the campaign into individually innocuous steps spread over a longer window."
+      }
+    ],
+    "target_segments": [
+      {
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "n": 17,
+        "detected": 2,
+        "missed": 15,
+        "recall": 0.1176
+      },
+      {
+        "attack_type": "ACCOUNT_TAKEOVER",
+        "difficulty": "HARD",
+        "n": 7,
+        "detected": 2,
+        "missed": 5,
+        "recall": 0.2857
+      },
+      {
+        "attack_type": "MULTI_STAGE",
+        "difficulty": "MEDIUM",
+        "n": 23,
+        "detected": 11,
+        "missed": 12,
+        "recall": 0.4783
+      },
+      {
+        "attack_type": "MERCHANT_FRAUD",
+        "difficulty": "EASY",
+        "n": 20,
+        "detected": 20,
+        "missed": 0,
+        "recall": 1.0
+      },
+      {
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "EASY",
+        "n": 11,
+        "detected": 11,
+        "missed": 0,
+        "recall": 1.0
+      }
+    ],
+    "knobs_before": {
+      "amount_mult_lo": 1.4,
+      "amount_mult_hi": 4.5,
+      "stay_under_p95": true,
+      "p_new_device": 0.18,
+      "p_new_city": 0.12,
+      "p_high_risk_city": 0.04,
+      "p_hosting_ip": 0.05,
+      "gap_lo_s": 5400,
+      "gap_hi_s": 64800,
+      "spread_days": 6,
+      "n_drain_lo": 3,
+      "n_drain_hi": 9,
+      "p_probe": 0.75,
+      "p_reuse_existing_payee": 0.55,
+      "p_credential_change": 0.2,
+      "biometric_dev": [
+        0.03,
+        0.26
+      ],
+      "p_round_amount": 0.12,
+      "label": "HARD"
+    },
+    "knobs_after": {
+      "amount_mult_lo": 0.7,
+      "amount_mult_hi": 2.2,
+      "stay_under_p95": true,
+      "p_new_device": 0.18,
+      "p_new_city": 0.0310705,
+      "p_high_risk_city": 0.007662000000000002,
+      "p_hosting_ip": 0.017662000000000004,
+      "gap_lo_s": 5400,
+      "gap_hi_s": 64800,
+      "spread_days": 18,
+      "n_drain_lo": 3,
+      "n_drain_hi": 12,
+      "p_probe": 0.75,
+      "p_reuse_existing_payee": 0.55,
+      "p_credential_change": 0.2,
+      "biometric_dev": [
+        0.03,
+        0.26
+      ],
+      "p_round_amount": 0.12,
+      "label": "ADVERSARIAL"
+    }
+  },
+  "adversarial_diversity": {
+    "n_scenarios": 250,
+    "n_events": 3026,
+    "events_per_scenario_mean": 12.1,
+    "attack_types": 3,
+    "difficulties": 1,
+    "distinct_victims": 169,
+    "distinct_victim_personas": 7,
+    "distinct_devices": 220,
+    "distinct_cities": 20,
+    "distinct_merchants": 199,
+    "distinct_stages": 15,
+    "distinct_methods": 4,
+    "amount_span_log10": 3.65,
+    "amount_p05": 70.51,
+    "amount_p50": 1502.99,
+    "amount_p95": 12822.14,
+    "entropy_attack_type": 0.9091,
+    "entropy_difficulty": 0.0,
+    "entropy_persona": 0.997,
+    "entropy_city": 0.8949,
+    "entropy_stage": 0.7764,
+    "type_counts": {
+      "ACCOUNT_TAKEOVER": 126,
+      "TRANSACTION_MANIPULATION": 86,
+      "MULTI_STAGE": 38
+    },
+    "difficulty_counts": {
+      "ADVERSARIAL": 250
+    }
+  },
+  "gap_before": {
+    "n_attacks": 78,
+    "n_detected": 46,
+    "n_missed": 32,
+    "recall": 0.5897435897435898,
+    "threshold": 0.051746462331321706,
+    "causes": [
+      {
+        "key": "LOW_VALUE",
+        "label": "Low-value amounts",
+        "description": "The attack never moved an amount large enough to stand out. Every transaction sat inside the band ordinary customers occupy.",
+        "share_of_missed": 0.4688,
+        "share_of_detected": 0.0435,
+        "lift": 10.781,
+        "excess_misses_explained": 13.6,
+        "n_missed_with_trait": 15,
+        "exploit_knob": "amount_mult",
+        "remediation": "Score cumulative value over 7-30 day windows, not just per-transaction amount. Add sub-threshold-repetition features.",
+        "attribution": 0.2259
+      },
+      {
+        "key": "MERCHANT_MIMICRY",
+        "label": "Merchant mimicry",
+        "description": "Cash-out went through merchants the victim already used, or through an aged merchant record, so acceptance-side signals stayed clean.",
+        "share_of_missed": 0.8438,
+        "share_of_detected": 0.4565,
+        "lift": 1.848,
+        "excess_misses_explained": 12.4,
+        "n_missed_with_trait": 27,
+        "exploit_knob": "merchant_reuse",
+        "remediation": "Track per-customer-per-merchant amount distributions, not just whether the pair has been seen before.",
+        "attribution": 0.206
+      },
+      {
+        "key": "FAMILIAR_GEOGRAPHY",
+        "label": "Familiar geography",
+        "description": "Ran from the victim's usual location, defeating distance and impossible-travel checks.",
+        "share_of_missed": 1.0,
+        "share_of_detected": 0.7609,
+        "lift": 1.314,
+        "excess_misses_explained": 7.7,
+        "n_missed_with_trait": 32,
+        "exploit_knob": "p_new_city",
+        "remediation": "Do not treat home geography as exculpatory; weight it lower when other context is anomalous.",
+        "attribution": 0.1279
+      },
+      {
+        "key": "SEQUENCE_ONLY",
+        "label": "Visible only as a sequence",
+        "description": "Individually unremarkable events whose only incriminating property is their ordering \u2014 invisible to per-row scoring.",
+        "share_of_missed": 0.2188,
+        "share_of_detected": 0.0217,
+        "lift": 10.062,
+        "excess_misses_explained": 6.3,
+        "n_missed_with_trait": 7,
+        "exploit_knob": "spread_days",
+        "remediation": "Sequence model over the account timeline, plus beneficiary in-degree graph features.",
+        "attribution": 0.1047
+      },
+      {
+        "key": "THIN_BUT_CLEAN_IDENTITY",
+        "label": "Aged synthetic identity",
+        "description": "A fabricated identity that had already accumulated enough account age and clean history to look established.",
+        "share_of_missed": 0.625,
+        "share_of_detected": 0.4348,
+        "lift": 1.438,
+        "excess_misses_explained": 6.1,
+        "n_missed_with_trait": 20,
+        "exploit_knob": "identity_quality",
+        "remediation": "Verify against authoritative sources at origination; footprint consistency beats behavioural history for thin files.",
+        "attribution": 0.1013
+      },
+      {
+        "key": "SLOW_PACING",
+        "label": "Slow / patient pacing",
+        "description": "Events were spaced far enough apart that no velocity window ever saw them together.",
+        "share_of_missed": 0.4375,
+        "share_of_detected": 0.2826,
+        "lift": 1.548,
+        "excess_misses_explained": 5.0,
+        "n_missed_with_trait": 14,
+        "exploit_knob": "gap",
+        "remediation": "Add long-horizon velocity (7d/30d) and per-account risk state that decays over days rather than resetting every 24 hours.",
+        "attribution": 0.0831
+      },
+      {
+        "key": "EXISTING_PAYEE",
+        "label": "Existing beneficiary",
+        "description": "Value was routed to a payee already on file, so new-payee controls and cooling-off windows did not apply.",
+        "share_of_missed": 0.4688,
+        "share_of_detected": 0.3696,
+        "lift": 1.268,
+        "excess_misses_explained": 3.2,
+        "n_missed_with_trait": 15,
+        "exploit_knob": "p_reuse_existing_payee",
+        "remediation": "Monitor dormant-payee reactivation and sudden step-changes in amount to a long-standing payee.",
+        "attribution": 0.0532
+      },
+      {
+        "key": "LOW_VELOCITY_FOOTPRINT",
+        "label": "Low velocity footprint",
+        "description": "Transaction counts stayed inside normal daily rhythm; no burst or fan-out was visible in any short window.",
+        "share_of_missed": 0.8125,
+        "share_of_detected": 0.7174,
+        "lift": 1.133,
+        "excess_misses_explained": 3.0,
+        "n_missed_with_trait": 26,
+        "exploit_knob": "n_drain",
+        "remediation": "Aggregate across the campaign, not the account-hour.",
+        "attribution": 0.0498
+      },
+      {
+        "key": "FAMILIAR_DEVICE",
+        "label": "Familiar device",
+        "description": "Executed from a device already established on the account, so device-novelty signals never fired.",
+        "share_of_missed": 0.9375,
+        "share_of_detected": 0.8478,
+        "lift": 1.106,
+        "excess_misses_explained": 2.9,
+        "n_missed_with_trait": 30,
+        "exploit_knob": "p_new_device",
+        "remediation": "Behavioural-biometric continuity within the session; detect device-familiar but behaviour-anomalous activity.",
+        "attribution": 0.0482
+      },
+      {
+        "key": "NO_CREDENTIAL_TRACE",
+        "label": "No credential trace",
+        "description": "No password change, profile edit or failed-login burst preceded the fraud, so account-compromise heuristics had nothing to fire on.",
+        "share_of_missed": 0.9688,
+        "share_of_detected": 0.9783,
+        "lift": 0.99,
+        "excess_misses_explained": -0.3,
+        "n_missed_with_trait": 31,
+        "exploit_knob": "p_credential_change",
+        "remediation": "Cover the authorised-push-payment case explicitly: fraud where nothing is compromised needs intent signals, not auth signals.",
+        "attribution": 0.0
+      }
+    ],
+    "by_attack_type": [
+      {
+        "group": "ACCOUNT_TAKEOVER",
+        "n": 7,
+        "detected": 2,
+        "missed": 5,
+        "recall": 0.2857,
+        "share_of_all_misses": 0.1562,
+        "mean_score": 0.04217
+      },
+      {
+        "group": "TRANSACTION_MANIPULATION",
+        "n": 28,
+        "detected": 13,
+        "missed": 15,
+        "recall": 0.4643,
+        "share_of_all_misses": 0.4688,
+        "mean_score": 0.3881
+      },
+      {
+        "group": "MULTI_STAGE",
+        "n": 23,
+        "detected": 11,
+        "missed": 12,
+        "recall": 0.4783,
+        "share_of_all_misses": 0.375,
+        "mean_score": 0.10932
+      },
+      {
+        "group": "MERCHANT_FRAUD",
+        "n": 20,
+        "detected": 20,
+        "missed": 0,
+        "recall": 1.0,
+        "share_of_all_misses": 0.0,
+        "mean_score": 0.85847
+      }
+    ],
+    "by_difficulty": [
+      {
+        "group": "HARD",
+        "n": 24,
+        "detected": 4,
+        "missed": 20,
+        "recall": 0.1667,
+        "share_of_all_misses": 0.625,
+        "mean_score": 0.02842
+      },
+      {
+        "group": "MEDIUM",
+        "n": 23,
+        "detected": 11,
+        "missed": 12,
+        "recall": 0.4783,
+        "share_of_all_misses": 0.375,
+        "mean_score": 0.10932
+      },
+      {
+        "group": "EASY",
+        "n": 31,
+        "detected": 31,
+        "missed": 0,
+        "recall": 1.0,
+        "share_of_all_misses": 0.0,
+        "mean_score": 0.89191
+      }
+    ],
+    "by_stage": [
+      {
+        "group": "MULE_PREP",
+        "n": 7,
+        "detected": 1,
+        "missed": 6,
+        "recall": 0.1429,
+        "share_of_all_misses": 0.1875,
+        "mean_score": 0.03293
+      },
+      {
+        "group": "STRUCTURE",
+        "n": 18,
+        "detected": 7,
+        "missed": 11,
+        "recall": 0.3889,
+        "share_of_all_misses": 0.3438,
+        "mean_score": 0.38321
+      },
+      {
+        "group": "ESCALATE",
+        "n": 4,
+        "detected": 2,
+        "missed": 2,
+        "recall": 0.5,
+        "share_of_all_misses": 0.0625,
+        "mean_score": 0.06485
+      },
+      {
+        "group": "PROBE",
+        "n": 7,
+        "detected": 4,
+        "missed": 3,
+        "recall": 0.5714,
+        "share_of_all_misses": 0.0938,
+        "mean_score": 0.29966
+      },
+      {
+        "group": "FAN_OUT",
+        "n": 8,
+        "detected": 7,
+        "missed": 1,
+        "recall": 0.875,
+        "share_of_all_misses": 0.0312,
+        "mean_score": 0.14802
+      },
+      {
+        "group": "CASH_OUT",
+        "n": 3,
+        "detected": 3,
+        "missed": 0,
+        "recall": 1.0,
+        "share_of_all_misses": 0.0,
+        "mean_score": 0.83974
+      },
+      {
+        "group": "RAMP",
+        "n": 17,
+        "detected": 17,
+        "missed": 0,
+        "recall": 1.0,
+        "share_of_all_misses": 0.0,
+        "mean_score": 0.86177
+      }
+    ],
+    "weakest_segments": [
+      {
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "n": 17,
+        "detected": 2,
+        "missed": 15,
+        "recall": 0.1176
+      },
+      {
+        "attack_type": "ACCOUNT_TAKEOVER",
+        "difficulty": "HARD",
+        "n": 7,
+        "detected": 2,
+        "missed": 5,
+        "recall": 0.2857
+      },
+      {
+        "attack_type": "MULTI_STAGE",
+        "difficulty": "MEDIUM",
+        "n": 23,
+        "detected": 11,
+        "missed": 12,
+        "recall": 0.4783
+      },
+      {
+        "attack_type": "MERCHANT_FRAUD",
+        "difficulty": "EASY",
+        "n": 20,
+        "detected": 20,
+        "missed": 0,
+        "recall": 1.0
+      },
+      {
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "EASY",
+        "n": 11,
+        "detected": 11,
+        "missed": 0,
+        "recall": 1.0
+      }
+    ],
+    "examples": [
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_07",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "STRUCTURE",
+        "amount": 7267.78,
+        "score": 0.000981,
+        "amount_ratio_customer_median": 3.074,
+        "seconds_since_prev_txn": 701,
+        "is_new_device": 0,
+        "traits": [
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_ACCH000012_01",
+        "attack_id": "ACCH000012",
+        "attack_type": "ACCOUNT_TAKEOVER",
+        "difficulty": "HARD",
+        "attack_stage": "PROBE",
+        "amount": 294.14,
+        "score": 0.001284,
+        "amount_ratio_customer_median": 0.294,
+        "seconds_since_prev_txn": 5416,
+        "is_new_device": 1,
+        "traits": [
+          "LOW_VALUE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY",
+          "SEQUENCE_ONLY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_ACCH000012_03",
+        "attack_id": "ACCH000012",
+        "attack_type": "ACCOUNT_TAKEOVER",
+        "difficulty": "HARD",
+        "attack_stage": "ESCALATE",
+        "amount": 1753.14,
+        "score": 0.002211,
+        "amount_ratio_customer_median": 2.006,
+        "seconds_since_prev_txn": 23967,
+        "is_new_device": 0,
+        "traits": [
+          "SLOW_PACING",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY",
+          "SEQUENCE_ONLY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_ACCH000012_00",
+        "attack_id": "ACCH000012",
+        "attack_type": "ACCOUNT_TAKEOVER",
+        "difficulty": "HARD",
+        "attack_stage": "RECON_LOGIN",
+        "amount": 42.69,
+        "score": 0.002352,
+        "amount_ratio_customer_median": 0.043,
+        "seconds_since_prev_txn": 2351,
+        "is_new_device": 0,
+        "traits": [
+          "LOW_VALUE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_MULM000023_06",
+        "attack_id": "MULM000023",
+        "attack_type": "MULTI_STAGE",
+        "difficulty": "MEDIUM",
+        "attack_stage": "TEST",
+        "amount": 760.56,
+        "score": 0.002765,
+        "amount_ratio_customer_median": 0.277,
+        "seconds_since_prev_txn": 8266,
+        "is_new_device": 0,
+        "traits": [
+          "LOW_VALUE",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "SEQUENCE_ONLY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_11",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "STRUCTURE",
+        "amount": 7739.07,
+        "score": 0.002894,
+        "amount_ratio_customer_median": 3.254,
+        "seconds_since_prev_txn": 113085,
+        "is_new_device": 0,
+        "traits": [
+          "SLOW_PACING",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_06",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "STRUCTURE",
+        "amount": 8339.34,
+        "score": 0.002986,
+        "amount_ratio_customer_median": 3.527,
+        "seconds_since_prev_txn": 1197,
+        "is_new_device": 0,
+        "traits": [
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_13",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "STRUCTURE",
+        "amount": 8078.33,
+        "score": 0.003198,
+        "amount_ratio_customer_median": 3.397,
+        "seconds_since_prev_txn": 34766,
+        "is_new_device": 0,
+        "traits": [
+          "SLOW_PACING",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_04",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "CALIBRATE",
+        "amount": 15174.27,
+        "score": 0.003997,
+        "amount_ratio_customer_median": 6.417,
+        "seconds_since_prev_txn": 18600,
+        "is_new_device": 0,
+        "traits": [
+          "SLOW_PACING",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_MULM000023_08",
+        "attack_id": "MULM000023",
+        "attack_type": "MULTI_STAGE",
+        "difficulty": "MEDIUM",
+        "attack_stage": "FAN_OUT",
+        "amount": 28974.05,
+        "score": 0.004837,
+        "amount_ratio_customer_median": 11.363,
+        "seconds_since_prev_txn": 1161,
+        "is_new_device": 0,
+        "traits": [
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_MULM000023_03",
+        "attack_id": "MULM000023",
+        "attack_type": "MULTI_STAGE",
+        "difficulty": "MEDIUM",
+        "attack_stage": "MULE_PREP",
+        "amount": 271.99,
+        "score": 0.006358,
+        "amount_ratio_customer_median": 0.086,
+        "seconds_since_prev_txn": 7324,
+        "is_new_device": 0,
+        "traits": [
+          "LOW_VALUE",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT"
+        ]
+      },
+      {
+        "transaction_id": "TXN_ATK_TRAH000028_16",
+        "attack_id": "TRAH000028",
+        "attack_type": "TRANSACTION_MANIPULATION",
+        "difficulty": "HARD",
+        "attack_stage": "REPEAT",
+        "amount": 7652.13,
+        "score": 0.007023,
+        "amount_ratio_customer_median": 3.166,
+        "seconds_since_prev_txn": 51123,
+        "is_new_device": 0,
+        "traits": [
+          "SLOW_PACING",
+          "FAMILIAR_DEVICE",
+          "FAMILIAR_GEOGRAPHY",
+          "EXISTING_PAYEE",
+          "MERCHANT_MIMICRY",
+          "NO_CREDENTIAL_TRACE",
+          "LOW_VELOCITY_FOOTPRINT",
+          "THIN_BUT_CLEAN_IDENTITY"
+        ]
+      }
+    ],
+    "calibration": {
+      "amt_ratio_p75": 1.884812355041504,
+      "amt_ratio_p95": 5.828260898590088,
+      "gap_p50": 10441.5,
+      "dist_p75": 0.0,
+      "mer_age_p50": 944.0,
+      "vel24_p75": 8.0,
+      "acct_age_p25": 432.75787353515625
+    }
+  },
+  "_meta": {
+    "scale": "nano",
+    "seed": 20260823,
+    "prevalence": 0.012,
+    "n_adversarial": 250,
+    "threshold_policy": "re-pinned to the same FPR budget on each population",
+    "elapsed_seconds": 10.2,
+    "environment": {
+      "python": "3.10.12",
+      "platform": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "ml_backend": "builtin-numpy (histogram GBDT / RF / TreeSHAP)",
+      "optional_backends": {
+        "xgboost": false,
+        "lightgbm": false,
+        "sklearn": false,
+        "shap": false
+      }
+    },
+    "written_at": "2026-08-24T03:02:30"
+  }
+}

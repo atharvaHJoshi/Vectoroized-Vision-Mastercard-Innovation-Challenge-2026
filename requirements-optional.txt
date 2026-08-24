@@ -1,0 +1,26 @@
+# Optional extras. SovereignGuard runs fully without every line in this file.
+#
+# When these are installed, optional_backends() reports them and reference
+# implementations can be used to cross-check the built-in ML core.
+
+# Reference gradient-boosting implementations
+xgboost>=1.6
+lightgbm>=3.3
+
+# Reference SHAP implementation (the project ships its own exact TreeSHAP)
+shap>=0.41
+
+# scikit-learn, for cross-checking metrics against a reference implementation
+scikit-learn>=1.0
+
+# Nicer CLI tables (the CLI falls back to a hand-rolled formatter without it)
+tabulate>=0.8
+
+# Charts for offline report generation
+matplotlib>=3.5
+
+# Faster on-disk feature storage (falls back to gzipped CSV)
+pyarrow>=8.0
+
+# Test runner (tests are also runnable via `python tests/run_tests.py`)
+pytest>=7.0

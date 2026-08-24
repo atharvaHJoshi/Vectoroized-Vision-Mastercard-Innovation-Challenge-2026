@@ -1,0 +1,98 @@
+# SovereignGuard — local stack.
+#
+#   docker compose up backend          API + JSON endpoints on :8000
+#   docker compose up                  backend + Next.js dashboard on :3000
+#   docker compose run --rm demo       the full adaptive loop, then exit
+#   docker compose run --rm experiments  the six measured experiments
+#
+# PostgreSQL is included under the `postgres` profile for the deployment
+# described in the plan; the default path uses SQLite so nothing else is needed:
+#   docker compose --profile postgres up
+
+services:
+  backend:
+    build: .
+    image: sovereignguard:latest
+    container_name: sovereignguard-api
+    ports:
+      - "8000:8000"
+    environment:
+      SG_SCALE: tiny
+      SG_SEED: "20260823"
+      SG_STATE_DIR: /var/lib/sovereignguard
+    volumes:
+      # Generated datasets and trained models persist on the host. The DB
+      # deliberately lives in a named volume, NOT a bind mount — SQLite needs
+      # POSIX locking that bind mounts do not always provide.
+      - ./data/synthetic:/app/data/synthetic
+      - ./data/attacks:/app/data/attacks
+      - ./models:/app/models
+      - ./experiments/results:/app/experiments/results
+      - sg-state:/var/lib/sovereignguard
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+
+  dashboard:
+    image: node:20-alpine
+    container_name: sovereignguard-dashboard
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      # Inside the compose network the backend is reachable by service name.
+      SG_API_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - dashboard-modules:/app/node_modules
+    # npm install runs on first start; the node_modules volume caches it.
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- one-shots
+  demo:
+    build: .
+    image: sovereignguard:latest
+    environment:
+      SG_STATE_DIR: /var/lib/sovereignguard
+    volumes:
+      - ./experiments/results:/app/experiments/results
+      - sg-state:/var/lib/sovereignguard
+    command: ["demo", "--scale", "tiny", "-n", "200"]
+    profiles: ["tools"]
+
+  experiments:
+    build: .
+    image: sovereignguard:latest
+    environment:
+      SG_STATE_DIR: /var/lib/sovereignguard
+    volumes:
+      - ./experiments/results:/app/experiments/results
+      - sg-state:/var/lib/sovereignguard
+    command: ["experiments", "--scale", "nano"]
+    profiles: ["tools"]
+
+  # ------------------------------------------------- optional PostgreSQL path
+  postgres:
+    image: postgres:16-alpine
+    container_name: sovereignguard-db
+    environment:
+      POSTGRES_DB: sovereignguard
+      POSTGRES_USER: sovereignguard
+      POSTGRES_PASSWORD: sovereignguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sovereignguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["postgres"]
+
+volumes:
+  sg-state:
+  dashboard-modules:
+  pgdata:

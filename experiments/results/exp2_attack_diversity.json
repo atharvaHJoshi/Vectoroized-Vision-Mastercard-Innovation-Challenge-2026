@@ -1,0 +1,272 @@
+{
+  "rows": [
+    {
+      "n_families": 1,
+      "families": [
+        "ACCOUNT_TAKEOVER"
+      ],
+      "metrics": {
+        "threshold": 0.005521171649700919,
+        "n": 6183,
+        "n_positive": 87,
+        "n_negative": 6096,
+        "tp": 53,
+        "fp": 53,
+        "tn": 6043,
+        "fn": 34,
+        "precision": 0.5,
+        "recall": 0.6091954022988506,
+        "f1": 0.5492227979274612,
+        "f2": 0.5837004405286343,
+        "specificity": 0.9913057742782152,
+        "fpr": 0.008694225721784778,
+        "fnr": 0.39080459770114945,
+        "accuracy": 0.9859291606016497,
+        "balanced_accuracy": 0.8002505882885329,
+        "roc_auc": 0.9761912842791203,
+        "pr_auc": 0.6403969820835723,
+        "detection_rate": 0.6091954022988506,
+        "alert_rate": 0.017143781335921073,
+        "alerts_per_1k_legit": 8.694225721784777,
+        "value_detected_share": 0.8940736911224973,
+        "latency_us_per_txn": 12.136999352112639
+      },
+      "entropy_attack_type": 0.0,
+      "distinct_stages": 6,
+      "n_attack_scenarios": 31,
+      "by_difficulty": [
+        {
+          "group": "HARD",
+          "n": 49,
+          "detected": 15,
+          "missed": 34,
+          "recall": 0.30612244897959184,
+          "mean_score": 0.028223640235806164
+        },
+        {
+          "group": "EASY",
+          "n": 18,
+          "detected": 18,
+          "missed": 0,
+          "recall": 1.0,
+          "mean_score": 0.7528104300320526
+        },
+        {
+          "group": "MEDIUM",
+          "n": 20,
+          "detected": 20,
+          "missed": 0,
+          "recall": 1.0,
+          "mean_score": 0.44118629000161286
+        }
+      ]
+    },
+    {
+      "n_families": 3,
+      "families": [
+        "ACCOUNT_TAKEOVER",
+        "TRANSACTION_MANIPULATION",
+        "PHISHING_PAYMENT_LINK"
+      ],
+      "metrics": {
+        "threshold": 0.03769997163218369,
+        "n": 6191,
+        "n_positive": 69,
+        "n_negative": 6122,
+        "tp": 47,
+        "fp": 67,
+        "tn": 6055,
+        "fn": 22,
+        "precision": 0.41228070175438597,
+        "recall": 0.6811594202898551,
+        "f1": 0.5136612021857924,
+        "f2": 0.6025641025641025,
+        "specificity": 0.9890558640967004,
+        "fpr": 0.010944135903299575,
+        "fnr": 0.3188405797101449,
+        "accuracy": 0.985624293329026,
+        "balanced_accuracy": 0.8351076421932777,
+        "roc_auc": 0.9196625143814894,
+        "pr_auc": 0.6439398422128894,
+        "detection_rate": 0.6811594202898551,
+        "alert_rate": 0.018413826522371186,
+        "alerts_per_1k_legit": 10.944135903299575,
+        "value_detected_share": 0.8590406447703666,
+        "latency_us_per_txn": 17.447170569777143
+      },
+      "entropy_attack_type": 0.9975,
+      "distinct_stages": 11,
+      "n_attack_scenarios": 33,
+      "by_difficulty": [
+        {
+          "group": "HARD",
+          "n": 32,
+          "detected": 12,
+          "missed": 20,
+          "recall": 0.375,
+          "mean_score": 0.2034750588810888
+        },
+        {
+          "group": "MEDIUM",
+          "n": 8,
+          "detected": 6,
+          "missed": 2,
+          "recall": 0.75,
+          "mean_score": 0.46752631676694
+        },
+        {
+          "group": "EASY",
+          "n": 29,
+          "detected": 29,
+          "missed": 0,
+          "recall": 1.0,
+          "mean_score": 0.7238244905094804
+        }
+      ]
+    },
+    {
+      "n_families": 5,
+      "families": [
+        "ACCOUNT_TAKEOVER",
+        "TRANSACTION_MANIPULATION",
+        "PHISHING_PAYMENT_LINK",
+        "SOCIAL_ENGINEERING",
+        "MERCHANT_FRAUD"
+      ],
+      "metrics": {
+        "threshold": 0.030392348092451935,
+        "n": 6186,
+        "n_positive": 70,
+        "n_negative": 6116,
+        "tp": 50,
+        "fp": 80,
+        "tn": 6036,
+        "fn": 20,
+        "precision": 0.38461538461538464,
+        "recall": 0.7142857142857143,
+        "f1": 0.5,
+        "f2": 0.6097560975609756,
+        "specificity": 0.986919555264879,
+        "fpr": 0.013080444735120994,
+        "fnr": 0.2857142857142857,
+        "accuracy": 0.9838344649207889,
+        "balanced_accuracy": 0.8506026347752966,
+        "roc_auc": 0.9464822946837336,
+        "pr_auc": 0.5480821317199468,
+        "detection_rate": 0.7142857142857143,
+        "alert_rate": 0.02101519560297446,
+        "alerts_per_1k_legit": 13.080444735120993,
+        "value_detected_share": 0.9479684772286798,
+        "latency_us_per_txn": 11.995388134226843
+      },
+      "entropy_attack_type": 0.9098,
+      "distinct_stages": 17,
+      "n_attack_scenarios": 37,
+      "by_difficulty": [
+        {
+          "group": "HARD",
+          "n": 51,
+          "detected": 31,
+          "missed": 20,
+          "recall": 0.6078431372549019,
+          "mean_score": 0.19036738853728555
+        },
+        {
+          "group": "MEDIUM",
+          "n": 19,
+          "detected": 19,
+          "missed": 0,
+          "recall": 1.0,
+          "mean_score": 0.7407994830708223
+        }
+      ]
+    },
+    {
+      "n_families": 7,
+      "families": [
+        "ACCOUNT_TAKEOVER",
+        "TRANSACTION_MANIPULATION",
+        "SYNTHETIC_IDENTITY",
+        "MERCHANT_FRAUD",
+        "PHISHING_PAYMENT_LINK",
+        "SOCIAL_ENGINEERING",
+        "MULTI_STAGE"
+      ],
+      "metrics": {
+        "threshold": 0.021207586714417852,
+        "n": 6191,
+        "n_positive": 54,
+        "n_negative": 6137,
+        "tp": 33,
+        "fp": 60,
+        "tn": 6077,
+        "fn": 21,
+        "precision": 0.3548387096774194,
+        "recall": 0.6111111111111112,
+        "f1": 0.4489795918367347,
+        "f2": 0.5339805825242719,
+        "specificity": 0.990223236108848,
+        "fpr": 0.009776763891152028,
+        "fnr": 0.3888888888888889,
+        "accuracy": 0.9869164916814731,
+        "balanced_accuracy": 0.8006671736099795,
+        "roc_auc": 0.9508506388089246,
+        "pr_auc": 0.5009968472422306,
+        "detection_rate": 0.6111111111111112,
+        "alert_rate": 0.015021805847197546,
+        "alerts_per_1k_legit": 9.77676389115203,
+        "value_detected_share": 0.8833696889163511,
+        "latency_us_per_txn": 7.0971503799435665
+      },
+      "entropy_attack_type": 0.9795,
+      "distinct_stages": 25,
+      "n_attack_scenarios": 27,
+      "by_difficulty": [
+        {
+          "group": "HARD",
+          "n": 12,
+          "detected": 1,
+          "missed": 11,
+          "recall": 0.08333333333333333,
+          "mean_score": 0.010286226289088443
+        },
+        {
+          "group": "EASY",
+          "n": 23,
+          "detected": 13,
+          "missed": 10,
+          "recall": 0.5652173913043478,
+          "mean_score": 0.17898333917600515
+        },
+        {
+          "group": "MEDIUM",
+          "n": 19,
+          "detected": 19,
+          "missed": 0,
+          "recall": 1.0,
+          "mean_score": 0.489584924135522
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "scale": "nano",
+    "seed": 20260823,
+    "prevalence": 0.01,
+    "elapsed_seconds": 27.2,
+    "environment": {
+      "python": "3.10.12",
+      "platform": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "ml_backend": "builtin-numpy (histogram GBDT / RF / TreeSHAP)",
+      "optional_backends": {
+        "xgboost": false,
+        "lightgbm": false,
+        "sklearn": false,
+        "shap": false
+      }
+    },
+    "written_at": "2026-08-24T03:01:58"
+  }
+}
