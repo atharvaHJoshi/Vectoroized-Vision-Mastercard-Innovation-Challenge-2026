@@ -337,6 +337,14 @@ def adversarial_loop(
 
     # Training split for the hardened model: baseline train window + adv_train,
     # with every held-out adversarial row excluded.
+    # Validation includes baseline valid + a held-out fraction of adv_train so
+    # that early stopping can detect overfitting to adversarial patterns.
+    rng_val = np.random.default_rng(seed + 99)
+    adv_indices = np.where(is_advtrain)[0]
+    rng_val.shuffle(adv_indices)
+    n_adv_val = max(5, int(len(adv_indices) * 0.25))
+    adv_val_idx = set(adv_indices[:n_adv_val].tolist())
+
     train_mask = np.zeros(len(w_all.tx), bool)
     train_mask[base_split.train] = True
     train_mask |= is_advtrain
@@ -344,6 +352,8 @@ def adversarial_loop(
     valid_mask = np.zeros(len(w_all.tx), bool)
     valid_mask[base_split.valid] = True
     valid_mask &= ~is_eval
+    for i in adv_val_idx:
+        valid_mask[i] = True
     train_mask &= ~valid_mask
 
     hardened_split = Split(
@@ -366,9 +376,18 @@ def adversarial_loop(
 
     # ---- 5. retrain on baseline + adv_train -------------------------------
     _log("retraining hardened model...", quiet)
+    hardened_params: dict = {}
+    if model_kind == "gbdt":
+        hardened_params = {
+            "learning_rate": 0.05,
+            "min_samples_leaf": 30,
+            "l2": 2.0,
+            "early_stopping_rounds": 50,
+            "scale_pos_weight": float(getattr(det.model, "scale_pos_weight", 1.0)),
+        }
     det2 = train_detector(w_all.feats, w_all.tx, hardened_split,
                           model_kind=model_kind, target_fpr=det.target_fpr,
-                          seed=seed + 17)
+                          model_params=hardened_params, seed=seed + 17)
     p_after = det2.predict_proba(F_eval)
     thr_after = choose_threshold_at_fpr(y_eval, p_after, det.target_fpr)
     m_after = compute_metrics(y_eval, p_after, thr_after,

@@ -117,7 +117,7 @@ export default function GapAnalysis({ run, simulate, busy, gap, setGap, goto }) 
                         <span
                           style={{
                             color:
-                              r.lift >= 2 ? "var(--red)" : r.lift >= 1.2 ? "var(--amber)" : "var(--text-dim)",
+                              r.lift >= 2 ? "var(--red)" : r.lift >= 1.2 ? "var(--amber)" : "var(--text-muted)",
                             fontFamily: "var(--mono)",
                           }}
                         >
@@ -136,7 +136,7 @@ export default function GapAnalysis({ run, simulate, busy, gap, setGap, goto }) 
                       header: "Recommended remediation",
                       width: "36%",
                       render: (r) => (
-                        <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{r.remediation}</span>
+                        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{r.remediation}</span>
                       ),
                     },
                   ]}
@@ -177,7 +177,7 @@ export default function GapAnalysis({ run, simulate, busy, gap, setGap, goto }) 
                       label: `${shortAttack(r.group)} (${r.n})`,
                       value: r.recall,
                       colour:
-                        r.recall >= 0.9 ? "var(--teal)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
+                        r.recall >= 0.9 ? "var(--green)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
                     }))}
                     format={(v) => pct(v, 0)}
                     max={1}
@@ -224,7 +224,7 @@ export default function GapAnalysis({ run, simulate, busy, gap, setGap, goto }) 
               </Card>
 
               <Card tone="amber" title="Next step">
-                <p style={{ margin: "0 0 12px", color: "var(--text-dim)" }}>
+                <p style={{ margin: "0 0 12px", color: "var(--text-muted)" }}>
                   The Red Team can now target these specific weaknesses and the Blue Team
                   can be retrained against the result.
                 </p>

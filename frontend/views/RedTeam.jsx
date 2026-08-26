@@ -122,7 +122,7 @@ export default function RedTeam({ run, simulate, busy }) {
 
                 {cfg.difficulty_descriptions && cfg.difficulty_descriptions[difficulty] && (
                   <p style={{ fontSize: 12.5, color: "var(--text-faint)", marginTop: 12 }}>
-                    <strong style={{ color: "var(--text-dim)" }}>{difficulty}: </strong>
+                    <strong style={{ color: "var(--text-muted)" }}>{difficulty}: </strong>
                     {cfg.difficulty_descriptions[difficulty]}
                   </p>
                 )}

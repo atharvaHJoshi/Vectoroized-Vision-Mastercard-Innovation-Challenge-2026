@@ -116,7 +116,7 @@ export default function BlueTeam({ run, simulate, busy, detect, setDetect }) {
                   label: `${r.group} (n=${r.n})`,
                   value: r.recall,
                   colour:
-                    r.recall >= 0.9 ? "var(--teal)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
+                    r.recall >= 0.9 ? "var(--green)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
                 }))}
                 format={(v) => pct(v, 1)}
                 max={1}
@@ -134,7 +134,7 @@ export default function BlueTeam({ run, simulate, busy, detect, setDetect }) {
                   label: `${shortAttack(r.group)} (${r.n})`,
                   value: r.recall,
                   colour:
-                    r.recall >= 0.9 ? "var(--teal)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
+                    r.recall >= 0.9 ? "var(--green)" : r.recall >= 0.7 ? "var(--amber)" : "var(--red)",
                 }))}
                 format={(v) => pct(v, 1)}
                 max={1}
@@ -153,13 +153,13 @@ export default function BlueTeam({ run, simulate, busy, detect, setDetect }) {
                 series={[
                   {
                     name: "recall",
-                    colour: "var(--teal)",
+                    colour: "var(--green)",
                     showDots: true,
                     points: (detect?.operating_curve || []).map((p) => [p.realised_fpr * 100, p.recall]),
                   },
                   {
                     name: "precision",
-                    colour: "var(--blue)",
+                    colour: "var(--accent)",
                     dashed: true,
                     showDots: true,
                     points: (detect?.operating_curve || []).map((p) => [p.realised_fpr * 100, p.precision]),
@@ -196,7 +196,7 @@ export default function BlueTeam({ run, simulate, busy, detect, setDetect }) {
                 data={(detect?.top_features || []).slice(0, 14).map((f) => ({
                   label: f.label,
                   value: f.importance,
-                  colour: "var(--blue)",
+                  colour: "var(--accent)",
                 }))}
                 format={(v) => num(v, 4)}
                 height={330}

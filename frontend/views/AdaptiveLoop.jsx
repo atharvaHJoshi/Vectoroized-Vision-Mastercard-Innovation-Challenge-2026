@@ -258,7 +258,7 @@ export default function AdaptiveLoop({ run, simulate, busy, loop, setLoop }) {
             tone="red"
           >
             {(plan?.moves || []).length === 0 ? (
-              <p style={{ color: "var(--text-dim)" }}>
+              <p style={{ color: "var(--text-muted)" }}>
                 No exploitable gap was identified — the defence had no trait that
                 discriminated misses from catches.
               </p>

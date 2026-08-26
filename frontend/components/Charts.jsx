@@ -22,7 +22,7 @@ export function BarChart({
   data,
   height = 240,
   format = (v) => num(v, 3),
-  colour = "var(--blue)",
+  colour = "var(--accent)",
   max,
   emptyLabel,
 }) {
@@ -141,13 +141,13 @@ export function LineChart({
           <polyline
             className="series"
             points={s.points.map((p) => `${sx(p[0])},${sy(p[1])}`).join(" ")}
-            stroke={s.colour || "var(--blue)"}
+            stroke={s.colour || "var(--accent)"}
             strokeDasharray={s.dashed ? "5 4" : undefined}
           />
           {s.showDots &&
             s.points.map((p, pi) => (
               <circle key={pi} cx={sx(p[0])} cy={sy(p[1])} r="3.5"
-                      fill={s.colour || "var(--blue)"} />
+                      fill={s.colour || "var(--accent)"} />
             ))}
         </g>
       ))}
@@ -165,7 +165,7 @@ export function LineChart({
         <g>
           {all.map((s, i) => (
             <g key={i} transform={`translate(${W - pad.r - 150},${pad.t + i * 16})`}>
-              <rect width="10" height="10" y="-8" fill={s.colour || "var(--blue)"} rx="2" />
+              <rect width="10" height="10" y="-8" fill={s.colour || "var(--accent)"} rx="2" />
               <text x="16" y="1" className="ax-tick">{s.name}</text>
             </g>
           ))}
@@ -197,7 +197,7 @@ export function Gauge({ value, max = 100, label, band }) {
     const y1 = CY - R * Math.sin(a1);
     return (
       <path d={`M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}`} stroke={colour}
-            strokeWidth={w} fill="none" strokeLinecap="butt" />
+            strokeWidth={w} fill="none" strokeLinecap="round" />
     );
   };
 
@@ -256,7 +256,7 @@ export function Waterfall({ reasons, protective, height = 300, emptyLabel }) {
               {String(r.label || r.feature).slice(0, 40)}
             </text>
             <rect x={up ? mid : mid - w} y={y} width={w} height={barH} rx="3"
-                  fill={up ? "var(--red)" : "var(--teal)"} />
+                  fill={up ? "var(--red)" : "var(--green)"} />
             <text x={up ? mid + w + 8 : mid - w - 8} y={y + barH / 2 + 4}
                   className="ax-value" textAnchor={up ? "start" : "end"}>
               {c > 0 ? "+" : ""}{c.toFixed(4)}
@@ -289,7 +289,7 @@ export function DeltaBar({ before, after, label, format = (v) => pct(v, 1) }) {
       <rect x={100} y={30} width={bw(b)} height={20} rx="3" fill="var(--muted-bar)" />
       <text x={100 + bw(b) + 8} y={45} className="ax-value">{format(b)}</text>
       <text x={92} y={80} className="ax-label" textAnchor="end">After</text>
-      <rect x={100} y={66} width={bw(a)} height={20} rx="3" fill="var(--teal)" />
+      <rect x={100} y={66} width={bw(a)} height={20} rx="3" fill="var(--green)" />
       <text x={100 + bw(a) + 8} y={81} className="ax-value">{format(a)}</text>
     </svg>
   );

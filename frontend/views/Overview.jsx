@@ -107,7 +107,7 @@ export default function Overview({ run, busy, simulate, detect, setDetect, progr
                     segments={(detect?.risk_distribution || []).map((b) => ({
                       label: b.band,
                       value: b.count,
-                      colour: BAND_COLOUR[b.band] || "#3c4a68",
+                      colour: BAND_COLOUR[b.band] || "#2a3654",
                     }))}
                     emptyLabel="Run detection to populate"
                   />
@@ -126,7 +126,7 @@ export default function Overview({ run, busy, simulate, detect, setDetect, progr
                         {(detect?.risk_distribution || []).map((b) => (
                           <tr key={b.band}>
                             <td><Badge className={bandClass(b.band)}>{b.band}</Badge></td>
-                            <td style={{ color: "var(--text-dim)" }}>
+                            <td style={{ color: "var(--text-muted)" }}>
                               {String(b.action || "").replace(/_/g, " ").toLowerCase()}
                             </td>
                             <td style={{ textAlign: "right" }}>{int(b.fraud)}</td>
@@ -152,7 +152,7 @@ export default function Overview({ run, busy, simulate, detect, setDetect, progr
                   series={[
                     {
                       name: "recall",
-                      colour: "var(--teal)",
+                      colour: "var(--green)",
                       showDots: true,
                       points: (detect?.operating_curve || []).map((p) => [
                         p.realised_fpr * 100,
@@ -161,7 +161,7 @@ export default function Overview({ run, busy, simulate, detect, setDetect, progr
                     },
                     {
                       name: "precision",
-                      colour: "var(--blue)",
+                      colour: "var(--accent)",
                       dashed: true,
                       showDots: true,
                       points: (detect?.operating_curve || []).map((p) => [

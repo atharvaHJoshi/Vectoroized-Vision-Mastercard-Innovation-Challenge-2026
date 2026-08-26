@@ -38,7 +38,7 @@ export default function Intelligence() {
       </div>
 
       <Card title="Why generative AI changes the problem" tone="amber">
-        <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 13 }}>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
           {tax.genai_amplification_note}
         </p>
       </Card>
@@ -56,7 +56,7 @@ export default function Intelligence() {
                     {Number(a.base_rate_prior).toFixed(2)}
                   </div>
                   <div className="intel-target">
-                    <strong style={{ color: "var(--text-dim)" }}>Target: </strong>
+                    <strong style={{ color: "var(--text-muted)" }}>Target: </strong>
                     {a.target}
                   </div>
                   <div className="surfaces">
@@ -81,7 +81,7 @@ export default function Intelligence() {
               <div className="intel-grid">
                 <div className="intel-block">
                   <h3>Role of generative AI</h3>
-                  <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-dim)" }}>
+                  <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)" }}>
                     {a.genai_role}
                   </p>
                 </div>
@@ -133,7 +133,7 @@ export default function Intelligence() {
               <Badge className={k === "ADVERSARIAL" ? "sev-critical" : k === "HARD" ? "sev-high" : "sev-low"}>
                 {k}
               </Badge>
-              <p style={{ fontSize: 12.5, color: "var(--text-dim)" }}>{v}</p>
+              <p style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{v}</p>
             </div>
           ))}
         </div>
@@ -143,7 +143,7 @@ export default function Intelligence() {
         {(tax.cross_cutting_patterns || []).map((c) => (
           <div key={c.name} style={{ marginBottom: 14 }}>
             <strong style={{ fontSize: 13 }}>{c.name.replace(/_/g, " ")}</strong>
-            <p style={{ fontSize: 12.5, color: "var(--text-dim)", margin: "3px 0" }}>
+            <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "3px 0" }}>
               {c.description}
             </p>
             <p style={{ fontSize: 12.5, color: "var(--amber)", margin: 0 }}>

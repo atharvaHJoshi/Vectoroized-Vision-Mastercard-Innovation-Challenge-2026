@@ -106,11 +106,11 @@ export const bandClass = (b) =>
 /** Recall -> colour, used by the weakest-segment heatmap. */
 export function recallColour(r) {
   if (r === null || r === undefined) return "var(--surface-3)";
-  if (r >= 0.95) return "rgba(45,212,191,0.28)";
-  if (r >= 0.85) return "rgba(45,212,191,0.16)";
-  if (r >= 0.7) return "rgba(250,204,21,0.18)";
+  if (r >= 0.95) return "rgba(16,185,129,0.28)";
+  if (r >= 0.85) return "rgba(16,185,129,0.16)";
+  if (r >= 0.7) return "rgba(245,158,11,0.18)";
   if (r >= 0.5) return "rgba(251,146,60,0.22)";
-  return "rgba(248,113,113,0.26)";
+  return "rgba(239,68,68,0.26)";
 }
 
 export const ATTACK_LABEL = {

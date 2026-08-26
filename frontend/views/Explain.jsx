@@ -103,13 +103,13 @@ export default function Explain({ run, simulate, busy }) {
                         </div>
                         <div className="ba-row">
                           <span>Ground truth</span>
-                          <b style={{ color: t.fraud_label ? "var(--red)" : "var(--teal)" }}>
+                          <b style={{ color: t.fraud_label ? "var(--red)" : "var(--green)" }}>
                             {t.fraud_label ? "FRAUD" : "LEGITIMATE"}
                           </b>
                         </div>
                         <div className="ba-row">
                           <span>Model was</span>
-                          <b style={{ color: data.is_correct ? "var(--teal)" : "var(--red)" }}>
+                          <b style={{ color: data.is_correct ? "var(--green)" : "var(--red)" }}>
                             {data.is_correct ? "correct" : "wrong"}
                           </b>
                         </div>
@@ -155,7 +155,7 @@ export default function Explain({ run, simulate, busy }) {
                 />
                 <div className="legend" style={{ marginTop: 10 }}>
                   <span className="legend-item"><i style={{ background: "var(--red)" }} />risk-increasing</span>
-                  <span className="legend-item"><i style={{ background: "var(--teal)" }} />protective</span>
+                  <span className="legend-item"><i style={{ background: "var(--green)" }} />protective</span>
                 </div>
               </Card>
 
@@ -188,7 +188,7 @@ export default function Explain({ run, simulate, busy }) {
                         header: "Contribution",
                         align: "right",
                         render: (r) => (
-                          <span style={{ color: "var(--teal)" }}>{num(r.contribution, 5)}</span>
+                          <span style={{ color: "var(--green)" }}>{num(r.contribution, 5)}</span>
                         ),
                       },
                     ]}

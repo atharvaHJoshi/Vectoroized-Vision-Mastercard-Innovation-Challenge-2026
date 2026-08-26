@@ -838,7 +838,8 @@ def stage_frontend(cfg: Dict) -> None:
 
     import re
     files = [p for p in fe.rglob("*") if p.suffix in (".js", ".jsx")
-             and "node_modules" not in p.parts]
+             and "node_modules" not in p.parts
+             and ".next" not in p.parts]
     line("source files", str(len(files)))
 
     pkg = json.loads((fe / "package.json").read_text())
