@@ -67,6 +67,113 @@ export async function runJob(path, payload, onProgress, intervalMs = 1500) {
   }
 }
 
+/**
+ * Realtime run client.
+ *
+ * Starts an async job, then opens an EventSource on /api/sse/{job_id} so the
+ * UI sees progress lines and per-scenario generation telemetry the moment they
+ * happen — no polling. If EventSource is unavailable or the stream drops, the
+ * caller's stream silently downgrades to classic /api/jobs polling through
+ * `pollJob` so the run still completes.
+ *
+ * Returns { abort } for callers that need to cancel on unmount.
+ */
+export function runRealtime(path, payload, { onProgress, onGeneration, onDone, onError }) {
+  let closed = false;
+  let settled = false;
+  // `settle` fires a terminal callback (done/error) exactly once. done and
+  // error can arrive from the SSE stream, from a transport failure's fallback
+  // poll, or from a sync endpoint result — whichever wins, the UI must not be
+  // told twice.
+  const settle = (fn, arg) => {
+    if (settled) return;
+    settled = true;
+    if (fn) fn(arg);
+  };
+  const finish = (fn, arg) => { if (!closed && fn) fn(arg); };
+
+  const started = () => post(path, payload).then((r) => {
+    if (closed) return;
+    if (!r || !r.job_id) { settle(onDone, r); return; }     // sync endpoint
+    const jobId = r.job_id;
+
+    if (typeof EventSource === "undefined") {
+      pollJob(jobId, {
+        onProgress, onDone: (res) => settle(onDone, res),
+        onError: (e) => settle(onError, e), closed: () => closed,
+      });
+      return;
+    }
+    const es = new EventSource(`/api/sse/${jobId}`);
+    let fallbackArmed = false;
+    es.onopen = () => { fallbackArmed = true; };
+    es.onerror = (e) => {
+      // A server-sent `event: error` line carries data and lips here too; a
+      // transport failure has no data. Distinguish so a real failure is
+      // reported once, not double-handled.
+      if (e && e.data) {
+        es.close();
+        let msg = "stream failed";
+        try { msg = JSON.parse(e.data).error || msg; } catch { /* ignore */ }
+        settle(onError, new Error(msg));
+        return;
+      }
+      // Transport failure mid-stream: stop and let polling take over.
+      if (fallbackArmed) {
+        es.close();
+        pollJob(jobId, {
+          onProgress, onDone: (res) => settle(onDone, res),
+          onError: (e) => settle(onError, e), closed: () => closed,
+        });
+      }
+    };
+    // The backend emits NAMED events: `event: progress|generation|done|error`.
+    // EventSource.onmessage only receives default-typed ("message") events, so
+    // named events must be subscribed with addEventListener — otherwise the
+    // stream stays open forever and the UI hangs on "Building…".
+    const parse = (e) => { try { return JSON.parse(e.data); } catch { return {}; } };
+    es.addEventListener("generation", (e) => finish(onGeneration, parse(e)));
+    es.addEventListener("progress", (e) => {
+      const d = parse(e);
+      if (d && d.message) finish(onProgress, d.message);
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      settle(onDone, parse(e));
+    });
+  }).catch((err) => settle(onError, err));
+
+  started();
+
+  return {
+    abort() {
+      closed = true;
+    },
+  };
+}
+
+/** Poll a job to completion — durable fallback for runRealtime. */
+async function pollJob(jobId, { onProgress, onDone, onError, closed }) {
+  let seen = 0;
+  for (;;) {
+    if (closed()) return;
+    try {
+      const job = await get(`/api/jobs/${jobId}`);
+      const lines = (job && job.progress) || [];
+      if (onProgress && lines.length > seen) {
+        lines.slice(seen).forEach((l) => onProgress(l.message));
+        seen = lines.length;
+      }
+      if (job && job.status === "complete") return onDone(job.result);
+      if (job && job.status === "failed")
+        return onError(new Error(job.error || "job failed"));
+    } catch (e) {
+      return onError(e);
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
 // ---------------------------------------------------------------- formatting
 export const pct = (v, digits = 1) =>
   v === null || v === undefined || Number.isNaN(v)

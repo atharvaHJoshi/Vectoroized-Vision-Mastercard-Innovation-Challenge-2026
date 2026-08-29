@@ -4,12 +4,14 @@ import Head from "next/head";
 // NOTE: globals.css is imported ONLY in pages/_app.jsx. Next.js rejects a
 // global stylesheet imported from any other module with
 // "Global CSS cannot be imported from files other than your Custom <App>".
-import { get, runJob } from "../lib/api";
+import { get, runRealtime } from "../lib/api";
 import { RunBanner, useHealth } from "../components/UI";
 
 import Overview from "../views/Overview";
 import Intelligence from "../views/Intelligence";
 import RedTeam from "../views/RedTeam";
+import Studio from "../views/Studio";
+import Live from "../views/Live";
 import BlueTeam from "../views/BlueTeam";
 import Explain from "../views/Explain";
 import GapAnalysis from "../views/GapAnalysis";
@@ -17,8 +19,10 @@ import AdaptiveLoop from "../views/AdaptiveLoop";
 
 const NAV = [
   { id: "overview", label: "Overview", group: "Situation" },
+  { id: "live", label: "Live Monitor", group: "Situation", tone: "cyan", live: true },
   { id: "intel", label: "Attack Intelligence", group: "Situation" },
   { id: "redteam", label: "Red Team Simulator", group: "Red Team", tone: "red" },
+  { id: "studio", label: "Attack Studio", group: "Red Team", tone: "red" },
   { id: "blueteam", label: "Blue Team Detection", group: "Blue Team", tone: "blue" },
   { id: "explain", label: "Explainability", group: "Blue Team", tone: "blue" },
   { id: "gap", label: "Gap Analysis", group: "Adaptive", tone: "amber" },
@@ -40,6 +44,9 @@ export default function App() {
   const [detect, setDetect] = useState(null);
   const [gap, setGap] = useState(null);
   const [loop, setLoop] = useState(null);
+  // Live per-scenario generation telemetry, streamed over SSE while a
+  // simulation builds. Becomes redundant once the run completes.
+  const [genFeed, setGenFeed] = useState(null);
 
   const simulate = useCallback(
     async (opts) => {
@@ -48,18 +55,24 @@ export default function App() {
       setProgress([]);
       setDetect(null);
       setGap(null);
-      try {
-        const result = await runJob(
-          "/api/simulate",
-          { scale: (opts && opts.scale) || scale, train: true, ...(opts || {}) },
-          (m) => setProgress((p) => [...p, m])
-        );
-        setRun(result);
-      } catch (e) {
-        setSimError(e);
-      } finally {
-        setBusy(false);
-      }
+      setGenFeed([]);
+      runRealtime(
+        "/api/simulate",
+        { scale: (opts && opts.scale) || scale, train: true, ...(opts || {}) },
+        {
+          onProgress: (m) => setProgress((p) => [...p, m]),
+          onGeneration: (a) => setGenFeed((prev) => (prev ? [...prev, a] : [a])),
+          onDone: (result) => {
+            setRun(result);
+            setGenFeed(null);
+            setBusy(false);
+          },
+          onError: (e) => {
+            setSimError(e);
+            setBusy(false);
+          },
+        }
+      );
     },
     [scale]
   );
@@ -70,7 +83,10 @@ export default function App() {
     get("/api/runs")
       .then((r) => {
         if (!alive || !r) return;
-        const live = (r.in_memory || [])[0];
+        // default_run is the newest warm world; in_memory keeps every world
+        // this process built (oldest first), but its DB row may have been
+        // cleared by a later persist=True simulate.
+        const live = r.default_run || (r.in_memory || [])[0];
         if (live) {
           get(`/api/runs/${live}`)
             .then((rec) => {
@@ -102,9 +118,10 @@ export default function App() {
       setGap,
       loop,
       setLoop,
+      genFeed,
       goto: setPage,
     }),
-    [run, busy, simulate, health, detect, gap, loop]
+    [run, busy, simulate, health, detect, gap, loop, genFeed]
   );
 
   const groups = useMemo(() => {
@@ -119,8 +136,10 @@ export default function App() {
 
   const Body = {
     overview: Overview,
+    live: Live,
     intel: Intelligence,
     redteam: RedTeam,
+    studio: Studio,
     blueteam: BlueTeam,
     explain: Explain,
     gap: GapAnalysis,
@@ -141,10 +160,15 @@ export default function App() {
       <div className="shell">
         <aside className="sidebar">
           <div className="brand">
-            <div className="brand-mark">SG</div>
+            <div className="brand-mark" aria-hidden="true">
+              <span className="mc mc-l" />
+              <span className="mc mc-r" />
+            </div>
             <div>
-              <div className="brand-name">SovereignGuard</div>
-              <div className="brand-tag">AI Payment Defence Lab</div>
+              <div className="brand-name">
+                SovereignGuard<em>·finsim</em>
+              </div>
+              <div className="brand-tag">AI payment defence lab</div>
             </div>
           </div>
 
@@ -163,6 +187,7 @@ export default function App() {
                     <span className="nav-dot" />
                     {n.label}
                     {n.hero && <span className="nav-hero-tag">hero</span>}
+                    {n.live && busy && <span className="nav-hero-tag">live</span>}
                   </button>
                 ))}
               </div>

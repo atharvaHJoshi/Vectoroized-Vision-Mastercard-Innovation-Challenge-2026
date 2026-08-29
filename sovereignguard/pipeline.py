@@ -30,7 +30,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -145,6 +145,7 @@ def build_world(
     n_merchants: Optional[int] = None,
     n_days: Optional[int] = None,
     quiet: bool = False,
+    on_scenario: Optional[Callable[[Dict], None]] = None,
 ) -> World:
     """Steps 1-5: population, legitimate traffic, attack injection, features.
 
@@ -179,7 +180,7 @@ def build_world(
          f"for {target_prevalence:.1%} prevalence", quiet)
     batch = rt.generate(n_needed, attack_types=attack_types,
                         difficulty_mix=difficulty_mix, stream="baseline",
-                        campaign="baseline")
+                        campaign="baseline", on_scenario=on_scenario)
 
     tx, cu, me, dv = merge_world(legit, customers, merchants, devices, [batch])
     tx = tx.sort_values(["timestamp", "transaction_id"],

@@ -13,11 +13,18 @@ exactly this kind of check, and both are pinned here so they cannot return:
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
 
 from conftest import SEED, tiny_world
 from sovereignguard.evaluation.metrics import roc_auc
 from sovereignguard.schema import FEATURE_COLUMNS, LABEL_COLUMNS
+
+ROOT = Path(__file__).resolve().parents[1]
 
 # A single feature scoring above this against the label is not a feature, it is
 # a leak. Real behavioural signals top out well below it.
@@ -174,3 +181,34 @@ def test_hard_attacks_are_measurably_harder_than_easy_ones():
     assert d_hard < d_easy, (
         f"HARD attacks ({d_hard:.3f}) are not closer to legitimate behaviour than "
         f"EASY ones ({d_easy:.3f}) — the difficulty levels are not doing anything")
+
+
+def test_device_registry_is_stable_across_processes():
+    """REGRESSION: merge_world() must register first-seen devices from a
+    content-digest seed, never the built-in hash().
+
+    Python randomizes hash() per process (PYTHONHASHSEED), so the same seed
+    used to build a world would silently produce different worlds — and
+    therefore unreproducible loop metrics — in every fresh process.
+    """
+    code = (
+        "import pandas as pd\n"
+        "from sovereignguard.generators.redteam import merge_world\n"
+        "legit = pd.DataFrame([{'timestamp': 1, 'transaction_id': 'T1',\n"
+        "                       'device_id': 'DEV_NEW', 'fraud_label': 0}])\n"
+        "devices = pd.DataFrame({'device_id': ['D0']})\n"
+        "tx, cu, me, dev = merge_world(legit, pd.DataFrame(), pd.DataFrame(),\n"
+        "                              devices, [])\n"
+        "print(','.join(repr(x) for x in dev['reputation']))\n"
+    )
+    digests = set()
+    for hs in ("1", "2", "3"):
+        out = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True,
+            env={**os.environ, "PYTHONHASHSEED": hs},
+            cwd=str(ROOT))
+        assert out.returncode == 0, out.stderr
+        digests.add(out.stdout.strip())
+    assert len(digests) == 1, (
+        f"device registry differs across PYTHONHASHSEED values: {digests}")

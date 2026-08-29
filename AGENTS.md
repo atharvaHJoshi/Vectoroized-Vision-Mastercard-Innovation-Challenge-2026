@@ -24,7 +24,9 @@ python verify.py --list             # show stage names
 
 ### CLI entry points
 ```bash
+./boot.sh                           # everything at once (snapshot + backend + dashboard)
 python sg.py demo                   # full loop, one command
+python sg.py snapshot --scale demo  # build+train+persist a boot seed (~2 min, one-time)
 python sg.py build --scale demo --save
 python sg.py train --model gbdt
 python sg.py redteam --difficulty HARD -n 500
@@ -34,6 +36,10 @@ python sg.py experiments
 python sg.py serve                  # REST API + dashboard on :8000
 python sg.py taxonomy
 ```
+
+`serve` auto-seeds from `data/snapshot/` on boot (world + trained detector reload in
+~seconds, so the dashboard opens fully populated). `--no-seed` or `SG_SEED=0` boots
+an empty lab. Create the snapshot with `python sg.py snapshot --scale demo`.
 
 ### Frontend
 ```bash
@@ -59,9 +65,10 @@ docker compose run --rm experiments # one-shot experiment suite
 - **`sovereignguard/ml/`** — histogram GBDT (`tree.py`), random forest + GBDT wrapper (`models.py`), TreeSHAP (`treeshap.py`)
 - **`sovereignguard/generators/`** — synthetic population, transactions, attacks, adversarial generation
 - **`sovereignguard/evaluation/`** — metrics, gap analysis (10 evasion hypotheses)
-- **`sovereignguard/api/server.py`** — stdlib `http.server` REST API (no FastAPI)
+- **`sovereignguard/api/server.py`** — stdlib `http.server` REST API (no FastAPI). `serve()` seeds `AppState` from a snapshot; `/api/simulate` reuses an identical deterministic build (config fingerprint) and `/api/detect`+`/api/gap` are memoised per (run, detector) — the "New simulation" button is only cheap for genuinely new parameters.
+- **`sovereignguard/snapshot.py`** — persists a built world (pickle) + trained detector (`Detector.save/load`) to `data/snapshot/` so a server boot is fully populated in seconds instead of a ~2 min cold build+train.
 - **`data/attack_taxonomy.json`** — 7-family attack knowledge base
-- **`frontend/`** — Next.js 14, plain JS/JSX (not TypeScript), 7 pages
+- **`frontend/`** — Next.js 14, plain JS/JSX (not TypeScript), 7 pages. The SSE client in `lib/api.js` subscribes with `addEventListener("generation|progress|done")` because the backend streams NAMED events; `onmessage` silently ignores them.
 
 ## Critical gotchas
 
@@ -77,9 +84,13 @@ docker compose run --rm experiments # one-shot experiment suite
 
 6. **`verify.py` stages assert, not just run.** Each stage checks concrete properties. A green run is evidence the pipeline works, not just that it ran. Use `--stage` to run individual stages in isolation; dependencies are built on demand.
 
-7. **Scale profiles matter.** `--scale nano` (300 customers, 21 days) for fast iteration. `--scale demo` (400 customers, 30 days) for load-bearing results. Confidence intervals are wide at nano scale.
+7. **Scale profiles matter.** `--scale nano` (300 customers, 21 days) for fast iteration. `--scale demo` (2,000 customers, 45 days, ~400 attack scenarios) for load-bearing results. Confidence intervals are wide at nano scale.
 
 8. **Frontend is statically checked only.** `verify.py` stage 14 resolves imports/exports but cannot run `next build` in all environments. Run `npm run build` in `frontend/` separately to verify.
+
+9. **The snapshot is the reboot path.** `serve` (without `--no-seed`) loads `data/snapshot/` into `AppState` on boot and pre-warms the world cache for the snapshot's own configuration, so the first identical "New simulation" is instant. Regenerate it with `python sg.py snapshot` any time default data should change. API tests use hermetic temp-stores (`_serve` in `test_detection_api.py`) so a live server and the test suite never fight over one sqlite file.
+
+10. **Client disconnects are normal, not errors.** Browsers abort requests constantly (navigation, refresh, timeout). `Handler._send`/`_send_file` swallow `BrokenPipeError`/`ConnectionResetError` and `SGServer.handle_error` silences them at the socketserver boundary — a clean log is expected, not a bug. Do not "fix" this by printing those tracebacks.
 
 ## Conventions
 

@@ -227,51 +227,79 @@ export function Gauge({ value, max = 100, label, band }) {
   );
 }
 
-/* --------------------------------------------------------- SHAP waterfall */
-export function Waterfall({ reasons, protective, height = 300, emptyLabel }) {
-  const pos = safe(reasons).map((r) => ({ ...r, sign: 1 }));
-  const neg = safe(protective).map((r) => ({ ...r, sign: -1 }));
+/* --------------------------------------------------------- SHAP waterfall
+   Responsive diverging-bar breakdown of why the model scored a transaction.
+
+   DOM/CSS by design rather than SVG: text is real type (readable at any
+   breakpoint instead of shrinking with a viewBox) and the diverging tracks are
+   percentage widths, so the chart adapts to the card's width without a lot of
+   math. Risk-increasing contributions grow right from the centre axis (red);
+   protective factors grow left (teal). The rightmost column is the raw
+   feature value. */
+export function Waterfall({
+  reasons,
+  protective,
+  baseValue,
+  prediction,
+  emptyLabel,
+}) {
+  const pos = safe(reasons).filter((r) => r && Number(r.contribution) > 0);
+  const neg = safe(protective).filter((r) => r && Number(r.contribution) < 0);
   const rows = [...pos, ...neg];
   if (!rows.length) return EMPTY(emptyLabel);
 
-  const hi = Math.max(...rows.map((r) => Math.abs(Number(r.contribution) || 0)), 1e-9);
-  const barH = 24;
-  const gap = 9;
-  const h = Math.max(height, rows.length * (barH + gap) + 16);
-  const mid = 430;
-  const span = 210;
+  const scale = Math.max(...rows.map((r) => Math.abs(Number(r.contribution) || 0)), 1e-9);
+
+  const fmtRaw = (v) => {
+    if (typeof v !== "number") return String(v ?? "");
+    if (Math.abs(v) >= 1e5) return v.toExponential(2);
+    return v.toFixed(3);
+  };
+  const fmtC = (c) => `${c > 0 ? "+" : ""}${(Number(c) || 0).toFixed(4)}`;
 
   return (
-    <svg className="chart" viewBox={`0 0 700 ${h}`} preserveAspectRatio="xMinYMin meet">
-      <line x1={mid} x2={mid} y1={0} y2={h} className="grid" />
-      {rows.map((r, i) => {
-        const c = Number(r.contribution) || 0;
-        const w = Math.max(2, (Math.abs(c) / hi) * span);
-        const y = i * (barH + gap) + 6;
-        const up = c > 0;
-        return (
-          <g key={i}>
-            <text x={mid - span - 14} y={y + barH / 2 + 4} className="ax-label"
-                  textAnchor="start">
-              {String(r.label || r.feature).slice(0, 40)}
-            </text>
-            <rect x={up ? mid : mid - w} y={y} width={w} height={barH} rx="3"
-                  fill={up ? "var(--red)" : "var(--green)"} />
-            <text x={up ? mid + w + 8 : mid - w - 8} y={y + barH / 2 + 4}
-                  className="ax-value" textAnchor={up ? "start" : "end"}>
-              {c > 0 ? "+" : ""}{c.toFixed(4)}
-            </text>
-            <text x={690} y={y + barH / 2 + 4} className="ax-tick" textAnchor="end">
-              {typeof r.value === "number"
-                ? Math.abs(r.value) >= 1000
-                  ? r.value.toExponential(2)
-                  : r.value.toFixed(3)
-                : String(r.value ?? "")}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <div className="waterfall">
+      {(baseValue !== undefined || prediction !== undefined) && (rows.length > 0) && (
+        <div className="wf-head">
+          <div className="wf-chip">
+            <span>base value</span>
+            <b className="wf-mono">{num(baseValue, 4)}</b>
+          </div>
+          <div className="wf-head-mid">
+            <span className="wf-up-tx">{pos.length} risk-increasing</span>
+            <span className="wf-down-tx">{neg.length} protective</span>
+          </div>
+          <div className="wf-chip wf-chip-strong">
+            <span>prediction</span>
+            <b className="wf-mono">{pct(prediction, 1)}</b>
+          </div>
+        </div>
+      )}
+
+      <div className="wf-rows">
+        {rows.map((r, i) => {
+          const c = Number(r.contribution) || 0;
+          const w = (Math.abs(c) / scale) * 100;
+          const up = c > 0;
+          return (
+            <div className="wf-row" key={`${r.label || r.feature}-${i}`}>
+              <div className="wf-label" title={String(r.label || r.feature)}>
+                {String(r.label || r.feature)}
+              </div>
+              <div className="wf-track" aria-hidden="true">
+                <div className={`wf-fill ${up ? "up" : "down"}`} style={{ width: `${w}%` }} />
+              </div>
+              <div className={`wf-val ${up ? "wf-up" : "wf-down"}`}>
+                {fmtC(c)}
+              </div>
+              <div className="wf-raw" title={String(r.value ?? "")}>
+                {fmtRaw(r.value)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -308,6 +336,78 @@ export function StagePipeline({ stages }) {
           {i < rows.length - 1 && <span className="pipeline-arrow">→</span>}
         </span>
       ))}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- attack timeline
+   Victim transaction stream over a window. Legit events sit on a baseline;
+   attack events rise above it scaled by amount and coloured by stage, so the
+   splice of a generated attack into the customer's normal history is visible. */
+export function AttackTimeline({ points, height = 230, emptyLabel }) {
+  const rows = safe(points);
+  if (!rows.length) return EMPTY(emptyLabel || "No events in this window");
+  const W = 700;
+  const H = Math.max(height, 150);
+  const pad = { l: 56, r: 18, t: 28, b: 44 };
+  const ts = rows.map((p) => Number(p.t));
+  const t0 = Math.min(...ts);
+  const t1 = Math.max(...ts);
+  const amts = rows.filter((p) => p.kind === "attack").map((p) => Number(p.amount) || 0);
+  const hiAmt = Math.max(...amts, 1e-9);
+  const baseY = H - pad.b - 34;
+  const sx = (t) => pad.l + ((t - t0) / (t1 - t0 || 1)) * (W - pad.l - pad.r);
+  const barH = (a) => Math.max(3, (Number(a) / hiAmt) * (baseY - pad.t));
+  const stages = [...new Set(rows.filter((p) => p.kind === "attack").map((p) => p.stage))];
+  const COL = ["#f2555a", "#f97316", "#fbbf24", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"];
+  const col = (s) => COL[stages.indexOf(s) % COL.length] || "#f2555a";
+  const nGrid = 6;
+  const ticks = Array.from({ length: nGrid }, (_, i) =>
+    Math.round(t0 + ((t1 - t0) / (nGrid - 1)) * i)
+  );
+
+  return (
+    <div className="timeline-wrap">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMin meet">
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={sx(t)} y1={pad.t} x2={sx(t)} y2={baseY} className="gridline" />
+            <text x={sx(t)} y={baseY + 16} className="ax-label" textAnchor="middle">
+              {t0 === t1 ? t : `${(((t - t0) / 3600)).toFixed(0)}h`}
+            </text>
+          </g>
+        ))}
+        <line x1={pad.l} y1={baseY} x2={W - pad.r} y2={baseY} className="axis" />
+        {rows.map((p, i) => {
+          const x = sx(Number(p.t));
+          if (p.kind === "attack") {
+            const h = barH(p.amount);
+            return (
+              <g key={i}>
+                <rect x={x - 4} y={baseY - h} width={8} height={h} rx="2"
+                      fill={col(p.stage)}>
+                  <title>{`${p.stage} · ₹${Number(p.amount).toLocaleString("en-IN")}`}</title>
+                </rect>
+              </g>
+            );
+          }
+          return (
+            <circle key={i} cx={x} cy={baseY} r="3" className="tl-legit">
+              <title>{`legit ₹${Number(p.amount).toLocaleString("en-IN")}`}</title>
+            </circle>
+          );
+        })}
+      </svg>
+      {stages.length > 1 && (
+        <div className="legend">
+          {stages.map((s) => (
+            <span key={s} className="legend-item">
+              <span className="swatch" style={{ background: col(s) }} />
+              {String(s).replace(/_/g, " ").toLowerCase()}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

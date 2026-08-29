@@ -13,8 +13,9 @@ is a number rather than an assertion.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -138,11 +139,14 @@ class RedTeam:
         knob_overrides: Optional[Dict[str, Knobs]] = None,
         stream: str = "redteam",
         campaign: str = "",
+        on_scenario: Optional[Callable[[Dict], None]] = None,
     ) -> AttackBatch:
         """Generate `n_scenarios` attack sequences.
 
         knob_overrides lets the adaptive engine substitute measured-weakness
         parameters for a difficulty label without touching the base generators.
+        `on_scenario`, if given, is called after each scenario is built with a
+        summary dict so callers can stream / visualise the generation live.
         """
         attack_types = list(attack_types or C.ATTACK_TYPES)
         unknown = set(attack_types) - set(C.ATTACK_TYPES)
@@ -204,6 +208,8 @@ class RedTeam:
                 "severity": taxonomy.severity(atype),
                 "campaign_id": campaign or attack_id,
             })
+            if on_scenario is not None:
+                on_scenario(dict(scen_rows[-1]))
 
         ev_df = (pd.DataFrame(all_events)[TRANSACTION_COLUMNS]
                  if all_events else pd.DataFrame(columns=TRANSACTION_COLUMNS))
@@ -262,7 +268,12 @@ def merge_world(legit_tx: pd.DataFrame, customers: pd.DataFrame, merchants: pd.D
     known = set(devices["device_id"])
     new_devs = [d for d in tx["device_id"].unique() if d not in known]
     if new_devs:
-        drng = np.random.default_rng(abs(hash(("devreg", len(new_devs)))) % (2**31))
+        # Stable across processes: hash() is randomized per process by
+        # PYTHONHASHSEED, which would quietly change the whole world (and every
+        # downstream metric) for the same seed. Use a content digest instead.
+        tag = ("devreg", len(new_devs))
+        digest = int.from_bytes(hashlib.md5(repr(tag).encode()).digest()[:8], "big")
+        drng = np.random.default_rng(digest % (2**31))
         rows = []
         for d in new_devs:
             rows.append({

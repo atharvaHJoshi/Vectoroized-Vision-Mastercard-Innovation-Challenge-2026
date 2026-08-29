@@ -121,7 +121,7 @@ export function RunBanner({ run, onSimulate, busy }) {
   if (run && run.run_id) {
     const s = run.summary || {};
     return (
-      <div className="runbar">
+      <div className={`runbar ${busy ? "runbar-building" : ""}`}>
         <div>
           <span className="runbar-k">Active run</span>
           <code>{run.run_id}</code>

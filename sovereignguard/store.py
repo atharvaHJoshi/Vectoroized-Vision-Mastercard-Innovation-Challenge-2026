@@ -207,6 +207,16 @@ class Store:
         return out
 
     # ------------------------------------------------------------------ world
+    def clear_simulations(self) -> None:
+        """Remove every prior simulation's data so the database holds only the
+        next simulation written after this call. Experiment records are kept."""
+        tables = ["runs", "customers", "merchants", "devices", "transactions",
+                  "attack_scenarios", "model_runs", "attack_results",
+                  "risk_scores", "gap_analysis", "loop_results"]
+        with self.connect() as con:
+            for name in tables:
+                con.execute(f"DELETE FROM {name}")
+
     def save_world(self, run_id: str, world) -> None:
         cu = world.customers[["customer_id", "persona", "age", "home_city",
                               "account_age_days", "median_amount", "kyc_level",

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -190,9 +191,34 @@ def cmd_experiments(a):
     run_all(scale=a.scale, seed=a.seed, quick=a.quick, only=getattr(a,"only",None))
 
 
+def cmd_snapshot(a):
+    from sovereignguard.snapshot import save_snapshot
+    from sovereignguard.pipeline import build_world, train_baseline
+    from sovereignguard.config import DATA_DIR
+    w = build_world(a.scale, a.seed, target_prevalence=a.prevalence,
+                    attack_types=a.types or None, quiet=False)
+    det, _sp = train_baseline(w, a.model, target_fpr=a.fpr, quiet=True)
+    m = det.metrics["test"]["overall"]
+    _metrics_block(m, f"BLUE TEAM ({a.model}) held-out test window")
+    rid = f"seed_{a.scale}"
+    p = save_snapshot(w, det, rid, meta={
+        "scale": a.scale, "seed": a.seed,
+        "target_prevalence": a.prevalence,
+        "attack_types": list(a.types) if a.types else None,
+        "model_kind": a.model,
+    })
+    print(f"\nsnapshot written to {p}")
+    print(f"  start fully populated:  python sg.py serve")
+    return w, det
+
+
 def cmd_serve(a):
     from sovereignguard.api.server import serve
-    httpd = serve(a.host, a.port)
+    seed = not a.no_seed
+    env = os.environ.get("SG_SEED", "").lower()
+    if env:
+        seed = env not in ("0", "false", "no")
+    httpd = serve(a.host, a.port, seed=seed)
     print(f"SovereignGuard on http://{a.host}:{a.port}")
     print(f"  dashboard : http://{a.host}:{a.port}/")
     print(f"  API health: http://{a.host}:{a.port}/api/health")
@@ -280,9 +306,17 @@ def main(argv=None):
     s.add_argument("--only", nargs="*", help="run only these, e.g. --only 3 4")
     s.set_defaults(func=cmd_experiments)
 
+    s = common(sub.add_parser("snapshot", help="build + train + persist a boot seed"))
+    s.add_argument("--model", default="gbdt", choices=["gbdt", "forest"])
+    s.add_argument("--fpr", type=float, default=C.TARGET_FPR_BUDGET)
+    s.add_argument("--types", nargs="*", choices=C.ATTACK_TYPES)
+    s.set_defaults(func=cmd_snapshot)
+
     s = sub.add_parser("serve", help="run the API and dashboard")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
+    s.add_argument("--no-seed", action="store_true",
+                   help="do not load data/snapshot on boot (start empty)")
     s.set_defaults(func=cmd_serve)
 
     s = sub.add_parser("taxonomy", help="print the attack knowledge base")

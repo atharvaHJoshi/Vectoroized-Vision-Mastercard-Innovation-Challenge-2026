@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
-import { post, pct, num, int, bandClass } from "../lib/api";
+import { post, pct, num, int, bandClass, money, shortAttack } from "../lib/api";
 import { Card, Kpi, ErrorNote, Skeleton, EmptyState, ProgressLog, Badge } from "../components/UI";
 import { StackedBar, LineChart } from "../components/Charts";
 
 const BAND_COLOUR = {
-  LOW: "#2dd4bf",
-  MEDIUM: "#fbbf24",
-  HIGH: "#fb923c",
-  CRITICAL: "#f2555a",
+  LOW: "#2fc48a",
+  MEDIUM: "#f5b850",
+  HIGH: "#ff9a3c",
+  CRITICAL: "#ff5a5f",
 };
 
-export default function Overview({ run, busy, simulate, detect, setDetect, progress, simError, goto }) {
+const DIFF_CLASS = {
+  EASY: "band-low",
+  MEDIUM: "band-medium",
+  HARD: "band-high",
+  ADVERSARIAL: "band-critical",
+};
+
+export default function Overview({ run, busy, simulate, detect, setDetect, progress, simError, goto, genFeed }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,14 +46,68 @@ export default function Overview({ run, busy, simulate, detect, setDetect, progr
       <div className="page-head">
         <h1>Situation Overview</h1>
         <p>
-          A synthetic payment portfolio is attacked by an AI Red Team and defended by an
-          AI Blue Team. Every figure below is measured on a held-out test window at a
+          A synthetic payment portfolio is attacked by an AI Red Team and defended by
+          an AI Blue Team. Every figure is measured on a held-out test window at a
           fixed false-positive budget — never on data the model trained on.
+        </p>
+        <p>
+          <span className="hero-note">
+            Production readiness: swap the synthetic stream for live payment feed and
+            the same scoring + alerting path issues decisions.
+          </span>
         </p>
       </div>
 
       {simError && <ErrorNote error={simError} onRetry={() => simulate()} />}
       {busy && <ProgressLog lines={progress} running title="Building world" />}
+
+      {busy && genFeed && genFeed.length > 0 && (
+        <Card
+          title="Attack generation — live"
+          subtitle="Streamed over server-sent events; each scenario appears the moment the generator finishes it."
+          actions={<Badge className="band-critical">{int(genFeed.length)} generated</Badge>}
+        >
+          <div className="kpi-row">
+            <div className="kpi-mini">
+              <div className="kpi-label">Scenarios</div>
+              <div className="kpi-value">{int(genFeed.length)}</div>
+            </div>
+            <div className="kpi-mini">
+              <div className="kpi-label">Events spliced</div>
+              <div className="kpi-value">
+                {int(genFeed.reduce((a, x) => a + (Number(x.n_events) || 0), 0))}
+              </div>
+            </div>
+            <div className="kpi-mini">
+              <div className="kpi-label">Value at risk</div>
+              <div className="kpi-value">
+                {money(genFeed.reduce((a, x) => a + (Number(x.total_value) || 0), 0))}
+              </div>
+            </div>
+            <div className="kpi-mini">
+              <div className="kpi-label">Families live</div>
+              <div className="kpi-value">{new Set(genFeed.map((a) => a.attack_type)).size}</div>
+            </div>
+          </div>
+          <div className="feed">
+            {genFeed.slice(-12).reverse().map((a) => (
+              <div className="feed-row" key={a.attack_id}>
+                <span className="feed-icon">{a.attack_type.slice(0, 2)}</span>
+                <span className="feed-main">
+                  <div className="feed-title">{shortAttack(a.attack_type)}</div>
+                  <div className="feed-meta">
+                    {a.persona} · {a.n_events} events · {a.stages}
+                  </div>
+                </span>
+                <span className="feed-right">
+                  <Badge className={DIFF_CLASS[a.difficulty] || "band-low"}>{a.difficulty}</Badge>
+                  <div className="feed-meta" style={{ marginTop: 3 }}>{money(a.total_value)}</div>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {!run || !run.run_id ? (
         !busy && (

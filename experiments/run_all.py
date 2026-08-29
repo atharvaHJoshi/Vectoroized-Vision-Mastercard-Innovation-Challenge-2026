@@ -38,6 +38,7 @@ from sovereignguard import config as C                       # noqa: E402
 from sovereignguard.detection import (Detector, optional_backends,  # noqa: E402
                                       temporal_grouped_split, train_detector,
                                       unseen_attack_split)
+from sovereignguard.store import Store                        # noqa: E402
 from sovereignguard.evaluation.gap_analysis import analyse_gaps  # noqa: E402
 from sovereignguard.evaluation.metrics import (bootstrap_ci,     # noqa: E402
                                                choose_threshold_at_fpr,
@@ -68,6 +69,26 @@ def _save(name: str, payload: Dict) -> Path:
     p.write_text(json.dumps(payload, indent=2, default=str))
     print(f"    -> {p.relative_to(ROOT)}")
     return p
+
+
+_EXPERIMENT_TITLES = {
+    "exp1_baseline": "Baseline detection",
+    "exp2_attack_diversity": "Attack diversity",
+    "exp3_unseen_attacks": "Unseen attack families",
+    "exp4_adversarial": "Gap-directed adversarial attacks",
+    "exp5_adaptive_training": "Adaptive training (hardening)",
+    "exp6_false_positives": "False-positive budget cost in friction",
+}
+
+
+def _persist_experiment(name: str, payload: Dict) -> None:
+    """Mirror each experiment into the store so the REST API (/api/experiments)
+    serves the same numbers the CLI just measured."""
+    try:
+        Store().save_experiment(name, _EXPERIMENT_TITLES.get(name, name),
+                                payload)
+    except Exception as exc:
+        print(f"    (API mirror skipped: {type(exc).__name__}: {exc})")
 
 
 def _hdr(n: int, title: str) -> None:
@@ -391,6 +412,7 @@ def run_all(scale: str = "tiny", seed: int = C.SEED, quick: bool = False,
             payload["_meta"] = {**payload.get("_meta", {}),
                                 "elapsed_seconds": round(time.time() - t, 1)}
             _save(name, payload)
+            _persist_experiment(name, payload)
             index[name] = {"status": "complete",
                            "elapsed_seconds": round(time.time() - t, 1)}
         except Exception as exc:                              # keep going

@@ -701,6 +701,15 @@ def stage_api(cfg: Dict) -> None:
         with urllib.request.urlopen(rq, timeout=60) as r:
             return r.status, _json.loads(r.read())
 
+    def wait_job(job_id, timeout=120):
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            _, j = get(f"/api/jobs/{job_id}")
+            if j["status"] in ("complete", "failed"):
+                return j
+            time.sleep(0.5)
+        raise AssertionError(f"job {job_id} did not finish in {timeout}s")
+
     try:
         code, h = get("/api/health")
         line("GET  /api/health", f"{code} {h['status']}", code == 200)
@@ -731,9 +740,11 @@ def stage_api(cfg: Dict) -> None:
 
         code, rt = post("/api/redteam/generate",
                         {"run_id": "verify_run", "n_scenarios": 20, "difficulty": "HARD"})
+        if code == 202:
+            rt = wait_job(rt["job_id"])["result"]
         line("POST /api/redteam/generate",
              f"{code}, {rt['n_scenarios']} scenarios / {rt['n_events']} events",
-             code == 200)
+             code in (200, 202))
 
         code, gp = post("/api/gap", {"run_id": "verify_run"})
         line("POST /api/gap", f"{code}, {len(gp.get('causes', []))} causes", code == 200)

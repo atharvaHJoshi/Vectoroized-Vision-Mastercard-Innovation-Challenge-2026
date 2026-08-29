@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { get, post, int, num, shortAttack } from "../lib/api";
-import { Card, ErrorNote, EmptyState, Skeleton, Badge, Table } from "../components/UI";
+import { get, runJob, int, num, shortAttack } from "../lib/api";
+import { Card, ErrorNote, EmptyState, Skeleton, Badge, Table, ProgressLog } from "../components/UI";
 import { BarChart, EntropyBar } from "../components/Charts";
 
 export default function RedTeam({ run, simulate, busy }) {
@@ -9,6 +9,7 @@ export default function RedTeam({ run, simulate, busy }) {
   const [difficulty, setDifficulty] = useState("HARD");
   const [n, setN] = useState(300);
   const [result, setResult] = useState(null);
+  const [progress, setProgress] = useState([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,14 +34,24 @@ export default function RedTeam({ run, simulate, busy }) {
     if (!run || !run.run_id) return;
     setRunning(true);
     setError(null);
+    setProgress([]);
     try {
+      // Generation + feature rebuild on a populated world runs ~40s, which
+      // outlasts the Next dev proxy's 30s upstream cap for a single response.
+      // The backend runs it as a job, so poll it and surface progress instead
+      // of blocking on one long request.
       setResult(
-        await post("/api/redteam/generate", {
-          run_id: run.run_id,
-          n_scenarios: Number(n),
-          attack_types: types.length ? types : null,
-          difficulty,
-        })
+        await runJob(
+          "/api/redteam/generate",
+          {
+            run_id: run.run_id,
+            n_scenarios: Number(n),
+            attack_types: types.length ? types : null,
+            difficulty,
+          },
+          (m) => setProgress((p) => [...p, m]),
+          1500
+        )
       );
     } catch (e) {
       setError(e);
@@ -131,6 +142,10 @@ export default function RedTeam({ run, simulate, busy }) {
           </Card>
 
           {error && <ErrorNote error={error} onRetry={generate} />}
+
+          {(running || progress.length > 0) && (
+            <ProgressLog lines={progress} running={running} title="Red team generation" />
+          )}
 
           {result && (
             <>

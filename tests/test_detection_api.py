@@ -210,6 +210,23 @@ def test_store_falls_back_when_the_path_is_unusable():
     assert st.get_run("r") is not None
 
 
+def test_clear_simulations_keeps_only_latest_run():
+    with tempfile.TemporaryDirectory() as d:
+        st = Store(path=Path(d) / "t.db", allow_fallback=False)
+        st.create_run("old", "simulate", {}, "nano", 1)
+        st.save_gap("g1", "mr_old", {"n_attacks": 5, "n_detected": 3,
+                                     "n_missed": 2, "recall": 0.6})
+        st.save_experiment("e1", "exp1", {"ok": True})
+        st.clear_simulations()
+        st.create_run("new", "simulate", {}, "nano", 2)
+        assert st.get_run("old") is None
+        assert any(r["run_id"] == "new" for r in st.list_runs())
+        assert st.query("SELECT COUNT(*) AS n FROM attack_scenarios")[0]["n"] == 0
+        assert st.latest_gap() is None
+        assert len(st.list_loops()) == 0
+        assert st.get_experiment("e1")["result"]["ok"] is True
+
+
 # ------------------------------------------------------------------- api
 def _free_port():
     import socket
@@ -221,9 +238,15 @@ def _free_port():
 
 
 def _serve():
-    from sovereignguard.api.server import serve
+    """Each server gets a private AppState + temp database so parallel or
+    background processes never fight the testing process over one sqlite file."""
+    import tempfile
+    from pathlib import Path as _P
+    from sovereignguard.api.server import AppState, serve
+    from sovereignguard.store import Store
+    state = AppState(store=Store(path=_P(tempfile.mkdtemp()) / "test.db"))
     port = _free_port()
-    httpd = serve("127.0.0.1", port)
+    httpd = serve("127.0.0.1", port, state=state)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     time.sleep(0.4)
     return httpd, f"http://127.0.0.1:{port}"
@@ -290,5 +313,259 @@ def test_api_error_handling_is_graceful():
             raise AssertionError("should have refused without a world")
         except urllib.error.HTTPError as e:
             assert e.code == 400, f"expected 400, got {e.code}"
+    finally:
+        httpd.shutdown()
+
+
+def test_sse_streams_generation_realtime():
+    """The realtime stream: progress + per-scenario generation events, then done."""
+    httpd, base = _serve()
+    try:
+        st, job = _post(base, "/api/simulate",
+                        {"scale": "nano", "train": False, "persist": False})
+        assert st == 202 and job["job_id"]
+
+        events = []                       # (event_name, payload)
+        with urllib.request.urlopen(base + "/api/sse/" + job["job_id"], timeout=120) as r:
+            ctype = r.headers.get("Content-Type", "")
+            assert ctype.startswith("text/event-stream"), ctype
+            name = None
+            for raw in r:
+                line = raw.decode().rstrip("\n")
+                if not line.strip():
+                    continue
+                if line.startswith("event:"):
+                    name = line.split(":", 1)[1].strip()
+                elif line.startswith("data:"):
+                    events.append((name, json.loads(line.split(":", 1)[1].strip())))
+                    if name == "done":
+                        break
+
+        gens = [d for n, d in events if n == "generation"]
+        progs = [d for n, d in events if n == "progress"]
+        done = [d for n, d in events if n == "done"]
+        assert gens, "generation telemetry must stream per scenario"
+        assert progs, "at least one progress message expected"
+        assert done and done[0].get("run_id"), "done event must carry the run result"
+        assert gens[0]["attack_id"] and gens[0]["n_events"] > 0
+
+        run_id = done[0]["run_id"]
+        code, rec = _get(base, f"/api/runs/{run_id}")
+        assert code == 200
+        # every streamed scenario must be findable in the world afterwards
+        code, attacks = _post(base, "/api/attacks", {"run_id": run_id, "limit": 2000})
+        world_ids = {a["attack_id"] for a in attacks["rows"]}
+        streamed_ids = {g["attack_id"] for g in gens}
+        assert streamed_ids <= world_ids, "streamed scenarios must have landed in the world"
+    finally:
+        httpd.shutdown()
+
+
+def test_sse_unknown_job_emits_error_event():
+    httpd, base = _serve()
+    try:
+        with urllib.request.urlopen(base + "/api/sse/job_nope", timeout=20) as r:
+            raw = r.read().decode()
+        assert "event: error" in raw and "unknown job" in raw
+    finally:
+        httpd.shutdown()
+
+
+def test_search_and_attacks_endpoints(tiny_world, tiny_detector):
+    from sovereignguard.api.server import (STATE, h_attacks, h_search)
+    w = tiny_world
+    rid = "w_search"
+    STATE.put_world(rid, w)
+    STATE.put_detector("d_search", tiny_detector[0])
+
+    code, att = h_attacks({}, {"run_id": rid})
+    assert code == 200 and att["total"] == len(w.batch.scenarios)
+    assert att["rows"] and "attack_id" in att["rows"][0]
+
+    aid = w.batch.scenarios["attack_id"].iloc[0]
+    code, s = h_search({}, {"run_id": rid, "attack_id": str(aid), "limit": 100})
+    assert code == 200
+    assert s["total"] == int((w.tx["attack_id"] == aid).sum())
+    assert s["scored"] and all("fraud_probability" in r for r in s["rows"])
+    assert all(r["attack_id"] == aid for r in s["rows"])
+
+    code, m = h_search({}, {"run_id": rid, "result": "missed", "fraud_only": True})
+    assert code == 200
+    assert all(r["fraud_label"] == 1 for r in m["rows"])
+    assert all(not r["detected"] for r in m["rows"])
+
+    txid_sample = str(w.tx.loc[w.tx["attack_id"] == aid, "transaction_id"].iloc[0])
+    code, q = h_search({}, {"run_id": rid, "q": txid_sample[:16]})
+    assert code == 200 and q["total"] >= 1
+
+    for h in (h_attacks, h_search):
+        code, _ = h({}, {"run_id": "nope"})
+        assert code == 400
+
+
+def test_build_world_emits_generation_telemetry():
+    from sovereignguard.pipeline import build_world
+    seen = []
+    build_world("nano", seed=7, quiet=True, on_scenario=seen.append)
+    assert len(seen) > 0, "on_scenario must fire once per baseline scenario"
+    first = seen[0]
+    assert first["attack_id"] and first["n_events"] > 0
+    assert "attack_type" in first and "difficulty" in first and "victim_customer_id" in first
+    assert len(seen) == len(set(x["attack_id"] for x in seen)), \
+        "baseline has a deterministic per-scenario count; ids must be unique"
+
+
+def test_attack_anatomy_endpoint(tiny_world, tiny_detector):
+    from sovereignguard.api.server import STATE, h_attack_detail
+    w = tiny_world
+    rid = "w_anat"
+    STATE.put_world(rid, w)
+    STATE.put_detector("d_anat", tiny_detector[0])
+
+    code, err = h_attack_detail({}, {})
+    assert code == 400
+
+    aid = w.batch.scenarios["attack_id"].iloc[0]
+    code, r = h_attack_detail({}, {"run_id": rid, "attack_id": str(aid)})
+    assert code == 200
+    assert r["attack"]["attack_id"] == aid
+    assert r["family"] and r["family"]["attack_name"]
+    assert r["knobs"], "evasion knobs must be resolved from the difficulty label"
+    assert r["events"], "attack events must be spliced into the world stream"
+    assert r["scored"] and all("fraud_probability" in e for e in r["events"]), \
+        "events must carry model scores when a detector is loaded"
+    assert r["timeline"] and any(t["is_attack"] for t in r["timeline"]), \
+        "victim timeline must contain the spliced attack"
+    tl_follows = r["timeline"]
+    assert all(tl_follows[i]["timestamp"] <= tl_follows[i + 1]["timestamp"]
+               for i in range(len(tl_follows) - 1)), "timeline must be chronological"
+
+    code, _ = h_attack_detail({}, {"run_id": rid, "attack_id": "ATKNOPE0000_0"})
+    assert code == 404
+
+
+def test_redteam_generate_merges_into_world(tiny_world):
+    from sovereignguard.api.server import (STATE, h_redteam_generate, h_search)
+    w = tiny_world
+    rid = "w_merge"
+    STATE.put_world(rid, w)
+    STATE.baseline[rid] = w.batch
+    before_tx, before_scen = len(w.tx), len(w.batch.scenarios)
+
+    def run_generate(body):
+        code, r = h_redteam_generate({}, body)
+        assert code == 202 and r["job_id"], \
+            "redteam generate must be an async job (202), like simulate/loop"
+        t0 = time.time()
+        while time.time() - t0 < 120:
+            st = STATE.job(r["job_id"])
+            if st["status"] in ("complete", "failed"):
+                if st["status"] == "failed":
+                    raise AssertionError(f"redteam job failed: {st.get('error')}")
+                return st["result"]
+            time.sleep(0.1)
+        raise AssertionError("redteam job did not finish in time")
+
+    r = run_generate({"run_id": rid, "n_scenarios": 5})
+    assert r["merged"] is True and r["n_events"] > 0
+    w2 = STATE.worlds[rid]
+    assert len(w2.tx) == before_tx + r["n_events"]
+    assert len(w2.batch.scenarios) == before_scen + r["n_scenarios"]
+    assert w2.tx["transaction_id"].nunique() == len(w2.tx), \
+        "re-minted ids must not collide with the baseline / each other"
+
+    ids = [e["transaction_id"] for e in r["events_sample"]]
+    assert w2.tx["transaction_id"].isin(ids).sum() == len(ids), \
+        "newly generated events must land in the world stream"
+    code, s = h_search({}, {"run_id": rid, "transaction_id": ids[0]})
+    # transaction_id is not a search filter, but search by that id substring:
+    code, s = h_search({}, {"run_id": rid, "q": ids[0][:20]})
+    assert code == 200 and s["total"] >= 1
+
+    # a second generate replaces the previous ad-hoc batch, baseline stays
+    before2 = len(w2.tx)
+    r2 = run_generate({"run_id": rid, "n_scenarios": 3})
+    w3 = STATE.worlds[rid]
+    assert r2["merged"] is True and len(w3.tx) == before2 - r["n_events"] + r2["n_events"], \
+        "previous ad-hoc batch is replaced"
+    assert w3.tx["transaction_id"].isin(ids).sum() == 0, \
+        "previous ad-hoc events must be replaced, not accumulate"
+
+
+def _wait_job(base, jid, timeout=120):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        code, j = _get(base, f"/api/jobs/{jid}")
+        if j["status"] in ("complete", "failed"):
+            return j
+        time.sleep(0.5)
+    raise AssertionError(f"job {jid} did not finish in {timeout}s")
+
+
+def test_identical_simulate_is_reused_and_endpoints_memoise():
+    """The same configuration must not rebuild an 18s world: the second
+    simulate returns the cached result, and detect/gap are answered from the
+    memo so repeated button presses are instant."""
+    httpd, base = _serve()
+    try:
+        _, j1 = _post(base, "/api/simulate",
+                      {"scale": "nano", "train": True, "persist": False})
+        r1 = _wait_job(base, j1["job_id"])["result"]
+
+        _, j2 = _post(base, "/api/simulate",
+                      {"scale": "nano", "train": True, "persist": False})
+        r2 = _wait_job(base, j2["job_id"])["result"]
+        assert r2.get("reused") is True, "identical config should reuse the cache"
+        assert r2["run_id"] == r1["run_id"]
+        assert r2["summary"]["n_transactions"] == r1["summary"]["n_transactions"]
+
+        # a genuinely different configuration must build fresh
+        _, j3 = _post(base, "/api/simulate",
+                      {"scale": "nano", "train": True, "persist": False,
+                       "seed": 9999})
+        r3 = _wait_job(base, j3["job_id"])["result"]
+        assert r3.get("reused") is not True
+        assert r3["run_id"] != r1["run_id"]
+
+        # detect + gap memoise: same answer, second call served instantly
+        rid = r1["run_id"]
+        _, d1 = _post(base, "/api/detect", {"run_id": rid})
+        _, d2 = _post(base, "/api/detect", {"run_id": rid})
+        assert d1["n_scored"] == d2["n_scored"] \
+            and d1["threshold"] == d2["threshold"]
+        _, g1 = _post(base, "/api/gap", {"run_id": rid})
+        _, g2 = _post(base, "/api/gap", {"run_id": rid})
+        assert g1["n_missed"] == g2["n_missed"]
+    finally:
+        httpd.shutdown()
+
+
+def test_cleared_run_row_is_still_readable_while_world_alive():
+    """A later persist=True simulate runs clear_simulations(), wiping prior
+    runs' DB rows. The dashboard polls /api/runs/{rid} for the run_id a
+    completed simulate just returned, so it must keep serving the record from
+    the live in-memory world instead of 404ing."""
+    httpd, base = _serve()
+    try:
+        _, j1 = _post(base, "/api/simulate",
+                      {"scale": "nano", "train": False, "persist": True})
+        r1 = _wait_job(base, j1["job_id"])["result"]
+        rid1 = r1["run_id"]
+
+        # a different configuration rebuilds and, with persist=True, clears
+        # rid1's database row (but not its in-memory world)
+        _, j2 = _post(base, "/api/simulate",
+                      {"scale": "nano", "train": False, "persist": True,
+                       "target_prevalence": 0.02})
+        r2 = _wait_job(base, j2["job_id"])["result"]
+        assert r2["run_id"] != rid1
+
+        code, rec1 = _get(base, f"/api/runs/{rid1}")
+        assert code == 200, \
+            "a run whose world is still in memory must not 404 after its row is cleared"
+        assert rec1["summary"]["n_transactions"] > 0
+
+        code, rec2 = _get(base, f"/api/runs/{r2['run_id']}")
+        assert code == 200 and rec2["summary"]["n_transactions"] > 0
     finally:
         httpd.shutdown()

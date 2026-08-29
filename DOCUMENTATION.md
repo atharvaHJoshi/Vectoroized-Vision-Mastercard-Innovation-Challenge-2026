@@ -1295,7 +1295,15 @@ Explains a single transaction decision via TreeSHAP.
 ```
 
 #### POST /api/redteam/generate
-Generates new attack scenarios.
+Generates new attack scenarios and merges them into the live world (features
+recomputed; the previous ad-hoc batch is replaced).
+
+Generation + feature rebuild takes ~40s on a populated world, which outlasts
+the Next dev proxy's 30s upstream cap, so **this is an async job** like
+`/api/simulate`: the endpoint returns `202 {job_id}` immediately and the work
+runs in the background. Poll `GET /api/jobs/{job_id}` (or stream `GET
+/api/sse/{job_id}`) until `status: "complete"`; `result` holds the payload
+below and `progress` carries generation lines.
 
 **Request:**
 ```json
@@ -1308,7 +1316,15 @@ Generates new attack scenarios.
 }
 ```
 
-**Response (200):**
+**Response (202):**
+```json
+{
+    "job_id": "job_de2edf5c60",
+    "status": "running"
+}
+```
+
+**Job result (`result` once complete):**
 ```json
 {
     "n_scenarios": 200,
