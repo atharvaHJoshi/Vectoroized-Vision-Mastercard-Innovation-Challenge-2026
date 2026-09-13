@@ -10,3 +10,4 @@ frontend/.next/
 frontend/dist/
 .env*
 data/
+data/snapshot/
