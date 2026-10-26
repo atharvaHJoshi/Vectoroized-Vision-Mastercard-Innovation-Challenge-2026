@@ -1,0 +1,8 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.env
+data/synthetic/
+data/eval_results/
+*.log

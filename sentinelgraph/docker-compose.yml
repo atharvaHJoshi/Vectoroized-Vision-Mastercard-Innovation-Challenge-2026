@@ -1,0 +1,88 @@
+# SentinelGraph — local stack (FalkorDB is the primary graph database).
+#
+#   docker compose up                 backend + dashboard (FalkorDB primary)
+#   docker compose run --rm ingest    load the synthetic world into FalkorDB
+#   docker compose run --rm eval      run the 3-baseline benchmark
+#   ./scripts/run-backend.sh          convenience: start the backend
+#   ./scripts/run-frontend.sh         convenience: start the dashboard
+#
+# When FalkorDB is unreachable the backend degrades to an in-memory graph
+# (SG_GRAPH_FALLBACK=1) so the demo still runs without it.
+
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: sentinelgraph-falkordb
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: sentinelgraph:latest
+    container_name: sentinelgraph-api
+    ports:
+      - "8000:8000"
+    environment:
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6380"
+      SG_DEFAULT_TENANT: tenant_acme
+      SG_GRAPH_FALLBACK: "1"
+    volumes:
+      - ./data/synthetic:/app/data/synthetic
+    command: ["python", "sg.py", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    image: node:20-alpine
+    container_name: sentinelgraph-dashboard
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      SG_API_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - dashboard-modules:/app/node_modules
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- one-shots
+  ingest:
+    image: sentinelgraph:latest
+    container_name: sentinelgraph-ingest
+    environment:
+      FALKORDB_HOST: falkordb
+      SG_GRAPH_FALLBACK: "1"
+    volumes:
+      - ./data/synthetic:/app/data/synthetic
+    command: ["python", "sg.py", "ingest", "--scale", "tiny"]
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  eval:
+    image: sentinelgraph:latest
+    container_name: sentinelgraph-eval
+    environment:
+      FALKORDB_HOST: falkordb
+      SG_GRAPH_FALLBACK: "1"
+    volumes:
+      - ./data/synthetic:/app/data/synthetic
+    command: ["python", "sg.py", "eval", "--scale", "tiny", "--n-cases", "8"]
+    depends_on:
+      - backend
+    profiles: ["tools"]
+
+volumes:
+  dashboard-modules:

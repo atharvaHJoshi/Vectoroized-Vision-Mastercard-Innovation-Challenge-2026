@@ -1,1 +1,0 @@
-"""SovereignGuard backend API."""

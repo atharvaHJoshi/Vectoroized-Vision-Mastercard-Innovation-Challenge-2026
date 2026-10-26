@@ -11,3 +11,7 @@ frontend/dist/
 .env*
 data/
 data/snapshot/
+
+# SentinelGraph frontend build artifacts
+sentinelgraph/dashboard/node_modules/
+sentinelgraph/dashboard/.next/

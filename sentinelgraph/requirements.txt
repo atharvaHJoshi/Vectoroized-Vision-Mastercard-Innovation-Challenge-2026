@@ -1,0 +1,18 @@
+# SentinelGraph — Trust-Aware Investigation and Memory Engine.
+#
+# Core runtime (stdlib HTTP server + numpy/pandas for any numeric work):
+numpy>=1.21
+pandas>=1.3
+
+# Backend API.
+fastapi>=0.100
+uvicorn[standard]>=0.23
+pydantic>=2.0
+
+# FalkorDB — primary graph database. Optional at import time; required for
+# the production/compose path. The backend degrades to an in-memory graph for
+# standalone demo runs.
+falkordb>=1.0
+
+# Evaluation / typing.
+typing-extensions>=4.0
